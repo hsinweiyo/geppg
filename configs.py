@@ -98,9 +98,7 @@ def kobuki_config():
     activation = 'relu'
     subset_obs = range(5)
     norm_values = None
-    a = np.array([[-1.0,1.0],]*2)
-    b = np.array([[0.0,1.0],]*3)
-    scale = np.vstack([a,b])
+    scale = np.vstack([np.array([[-1.0,1.0],]*2), np.array([[0.0,1.0],]*3)])
     controller = NNController(hidden_sizes, controller_tmp, subset_obs, 2, norm_values, scale, activation)
     nb_weights = controller.nb_weights
 
@@ -110,8 +108,10 @@ def kobuki_config():
     goal_space = representer.initial_space
     nb_rep = representer.dim
     engineer_goal = np.array([1.0, 0.0, 0.0])
+    
     # scale engineer goal to[-1, 1]^N
     engineer_goal = scale_vec(engineer_goal, initial_space)
+    
     # inverse model
     knn = KNNRegressor(n_neighbors=1)
 
