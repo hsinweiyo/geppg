@@ -54,7 +54,7 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([22]) / self._range) - np.ones([22])
+            obs_in = ((obs_in - self._min) * 2*np.ones([5]) / self._range) - np.ones([5])
 
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)

@@ -20,7 +20,6 @@ from configs import *
 
 
 saving_folder = './results/'
-video_folder = './videos/0.mp4'
 trial_id = 1
 nb_runs = 1
 env_id = 'Kobuki-v0' #'HalfCheetah-v2'# #'MountainCarContinuous-v0' #
@@ -66,8 +65,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        #env = gym.make(env_id)
-        env = UnityEnv('UnityGEP_2+20/kobuki.x86_64', 1)
+        env = gym.make('FiveTargetColor-v0')
+        #env = UnityEnv('UnityGEP_2+20/kobuki.x86_64', 1)
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -137,28 +136,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             print(engineer_goal)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
-       # Hsin-Wei 0912 Adding Video Record
-        #vid_env = VideoRecorder(env=env, path=video_folder)
-        #obs = env.reset()
-        #rew = np.zeros([nb_timesteps+1])
-        #done = False
-        #for t in range(nb_timesteps):
-            #if done:
-             #   print('Observation:')
-             #   print(obs)
-             #   break
-            #act = controller.step(best_policy, obs).reshape(1, -1)
-            #out = env.step(np.copy(act))
-            # env.render()
-            #vid_env.capture_frame()
-            #obs = out[0]
-            # print(obs)
-            #rew[t + 1] = out[1]
-            #done = out[2]
         print('Observation:')
         print(obs)
         print('Run performance: ', np.nansum(rew))
-        #vid_env.close()
 
         print('Final performance for the run: ', np.array(final_eval_perfs).mean())
 
@@ -240,6 +220,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         print('Representation w/o Max:' + str(rep))
 
     # update inverse model
+    print(rep)
     knn.update(X=rep, Y=policy)
 
     return obs, act, rew
@@ -324,14 +305,13 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 
     gep_perf = np.zeros([nb_runs])
-    obj_dict['black'] = np.array([0.,0.,0.])
-    obj_dict['red']   = np.array([1.,0.,0.])
-    obj_dict['green'] = np.array([0.,1.,0.])
-    obj_dict['blue']  = np.array([0.,0.,1.])
-    obj_dict['white'] = np.array([1.,1.,1.])
+    obj_dict['1'] = np.array([1.,0.,0.])
+    obj_dict['2'] = np.array([0.,1.,0.])
+    obj_dict['3'] = np.array([0.,0.,1.])
+    obj_dict['4'] = np.array([1.,0.,1.])
+    obj_dict['5'] = np.array([0.,1.,1.])
     
     #pos_dict[0.,0.,0.]
-
     for i in range(nb_runs):
         gep_perf[i], policies = run_experiment(**args)
         print(gep_perf)
