@@ -31,6 +31,13 @@ obj_dict = dict()
 n_traj = 0
 sample_obs = []
 
+def color_code2name(code):
+    if np.all(code == (1, 0, 0)): return "red"
+    if np.all(code == (0, 1, 0)): return "green"
+    if np.all(code == (0, 0, 1)): return "blue"
+    if np.all(code == (1, 0, 1)): return "purple"
+    if np.all(code == (0, 1, 1)): return "cyan"
+
 def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder):
 
     # create data path
@@ -113,13 +120,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             observation_seqs = np.concatenate([observation_seqs, obs], axis=0)
             reward_seqs = np.concatenate([reward_seqs, rew], axis=0)
             train_perfs.append(np.nansum(rew))
-            #TODO dirty bug
+            
+            # TODO dirty bug
             if (ep+1) % 20 == 0.0:
-                print('Engineer Goal:')
-                #engineer_goal = np.random.random_sample((3))
                 ran_key, engineer_goal = random.choice(list(obj_dict.items()))
+                print('Engineer Goal:')
                 print(engineer_goal)
-                offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs) 
+
             # offline tests
             if ep in test_ind:
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
@@ -127,10 +134,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
+            ran_key, engineer_goal = random.choice(list(obj_dict.items()))
             print('Test episode #', ep+1)
             print('Engineer Goal:')
-            #engineer_goal = np.random.random_sample((3,)) 
-            ran_key, engineer_goal = random.choice(list(obj_dict.items()))
             print(engineer_goal)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
@@ -251,12 +257,9 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         returns.append(np.nansum(rew))
         target = np.where(np.array(obs[2:] == engineer_goal))
         
-        key = "_".join([str(i) for i in engineer_goal])
-        key = "_".join([key,str(i)])
-        key = "_".join([key,str(n_traj)])
-        
-        n_traj += 1
+        key = "_".join([color_code2name(engineer_goal), str(i), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
+        n_traj += 1
 
     eval_perfs.append(np.array(returns).mean())
 
@@ -297,6 +300,14 @@ if __name__ == '__main__':
     obj_dict['3'] = np.array([0.,0.,1.])
     obj_dict['4'] = np.array([1.,0.,1.])
     obj_dict['5'] = np.array([0.,1.,1.])
+
+    coord_dict ={
+        "red"   : [np.cos(np.deg2rad(18)), np.sin(np.deg2rad(18))],
+        "green" : [np.cos(np.deg2rad(90)), np.sin(np.deg2rad(90))],
+        "blue"  : [np.cos(np.deg2rad(162)), np.sin(np.deg2rad(162))], 
+        "purple": [np.cos(np.deg2rad(234)), np.sin(np.deg2rad(234))],
+        "cyan"  : [np.cos(np.deg2rad(306)), np.sin(np.deg2rad(306))],
+    }
     
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
@@ -310,8 +321,8 @@ if __name__ == '__main__':
         plt.axis([-1.0, 1.0, -1.0, 1.0])
         
         x_z = key.split('_')
-        x_z = [float(i) for i in x_z]
+        color = x_z[0]
         
-        plt.plot(traj_dict[key][0], traj_dict[key][1], x_z[0], x_z[1], 'ro')
-        fig.savefig('figures/'+key+'.png')
+        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], coord_dict[color][0], coord_dict[color][1], 'ro')
+        fig.savefig('figures/'+ key +'.png')
         plt.close()
