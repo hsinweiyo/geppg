@@ -47,11 +47,13 @@ import bootstrapped.stats_functions as bs_stats
 import pickle
 import os
 
-data_path='../results/algo_folder'
+data_path='../outputs/MountainCarContinuous-v0/'
 
-name_run = 'GEP_PG'
+name_run = 'GEP'
+#name_run = 'GEP_PG'
 name_algo = 'GEP-PG with action perturbations'
-env_id='HalfCheetah-v2' #'MountainCarContinuous-v0'  #
+env_id='MountainCarContinuous-v0' #'MountainCarContinuous-v0'  #
+#env_id='HalfCheetah-v2' #'MountainCarContinuous-v0'  #
 
 gep = False # set to True if study includes GEP bootstrap 'GEP_PG', False otherwise
 gep_only = False # set to True if it's a run 'GEP'
@@ -96,8 +98,10 @@ def extract_gep(data_path, x_step, main_curve, error_type):
     final_perfs = []
     absolute_perfs = []
     fig = plt.figure(figsize=(20,13), frameon=False)
+    #print ('----------'+data_path+trial+'/save_gep.pk')
     for i, trial in enumerate(sorted(os.listdir(data_path))):
         if len(trial)<5: #only select trial_ids, not files or plot created after that
+            print ('----------'+data_path+trial+'/save_gep.pk')
             with open(data_path+trial+'/save_gep.pk', 'rb') as f:
                 data_gep = pickle.load(f)
             eval_perfs.append(list(data_gep['eval_perfs']))
@@ -118,6 +122,7 @@ def extract_gep(data_path, x_step, main_curve, error_type):
     print('Mean GEP performance: ', np.mean(np.array(final_perfs)))
     n_runs = len(eval_perfs)
     eval_perfs = np.array(eval_perfs)
+    print (eval_perfs.shape)
     steps = range(0, eval_perfs.shape[1]*x_step, x_step)
     if main_curve=='mean':
         toPlot_av = np.nanmean(eval_perfs, axis=0)

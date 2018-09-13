@@ -18,6 +18,8 @@ class NNController():
             self._range = self._scale[:, 1] - self._min
 
         self._layer_sizes = [len(self._subset_obs)] + hidden_sizes + [nb_act]
+        # print ('Len of layer sizes\n')
+        # print (self._layer_sizes)
         # compute number of parameters
         self._nb_weights = 0
         for i in range(len(self._layer_sizes) - 1):
@@ -50,7 +52,9 @@ class NNController():
             obs_in = (obs_in - self._norm_values[0, :]) / self._norm_values[1, :]
         # or scale values to [-1,1]^N if scale is not None
         elif self._scale is not None:
-            obs_in = ((obs_in - self._min) * 2*np.ones([2]) / self._range) - np.ones([2])
+            #print(obs_in)
+            #print(self._min)
+            obs_in = ((obs_in - self._min) * 2*np.ones([22]) / self._range) - np.ones([22])
 
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
@@ -74,7 +78,8 @@ class NNController():
             self._action = np.array([self._action])
 
         self._action = np.clip(self._action, -1, 1) # just in case..
-
+        #print('Len of action in controllers\n')
+        #print (len(self._action))
         return self._action
 
 

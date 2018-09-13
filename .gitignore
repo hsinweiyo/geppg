@@ -104,3 +104,15 @@ venv.bak/
 .mypy_cache/
 
 .idea/
+
+
+# unity
+assets/
+outputs/
+figures/
+UnityGEP_20/
+UnityGEP_2/
+video
+videos
+*.swp
+UnityGEP_20.zip

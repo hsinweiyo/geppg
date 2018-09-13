@@ -23,7 +23,7 @@ def scale_vec(vector, initial_space):
     Scale vector from initial space to [-1,1]^N
     """
     vec_in = np.copy(vector)
-    vec_out = (vec_in - initial_space[:, 0]) * 2 / np.diff(initial_space).squeeze() - 1
+    vec_out = (vec_in - initial_space[:, 0])  / np.diff(initial_space).squeeze() 
 
     return vec_out
 
@@ -116,14 +116,20 @@ def replay_save_video(env_id, policy, path_vids):
         nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
         nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = cmc_config()
 
+    nb_timesteps = 100
+    print('Timesteps: ' + str(nb_timesteps))
     env = gym.make(env_id)
     vid_env = VideoRecorder(env=env, path=path_vids)
     obs = env.reset()
+
     rew = np.zeros([nb_timesteps+1])
     done = False
+    
     for t in range(nb_timesteps):
         if done:
             break
+        print ('Len of controller.step in replay fun\n')
+        print (len(controller.step(policy, obs)))
         act = controller.step(policy, obs).reshape(1, -1)
         out = env.step(np.copy(act))
         env.render()

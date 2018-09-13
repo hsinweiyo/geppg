@@ -1,7 +1,7 @@
 import numpy as np
 
 from controllers import NNController
-from representers import CheetahRepresenter, CMCRepresenter
+from representers import CheetahRepresenter, CMCRepresenter, KobukiRepresenter
 from inverse_models import KNNRegressor
 
 from gep_utils import *
@@ -82,4 +82,39 @@ def cmc_config():
     noise = 0.1
 
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval,  \
+           controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
+
+def kobuki_config():
+    # run parameters
+    nb_bootstrap = 10
+    nb_explorations = 50
+    nb_tests = 20
+    nb_timesteps = 200
+    offline_eval = (1e6, 10)
+
+    # controller parameters
+    hidden_sizes = []
+    controller_tmp = 1.
+    activation = 'relu'
+    subset_obs = range(22)
+    norm_values = None
+    scale = np.array([[-1.0,1.0],]*22)
+    controller = NNController(hidden_sizes, controller_tmp, subset_obs, 2, norm_values, scale, activation)
+    nb_weights = controller.nb_weights
+
+    # representer
+    representer = KobukiRepresenter()
+    initial_space = representer.initial_space
+    goal_space = representer.initial_space
+    nb_rep = representer.dim
+    engineer_goal = np.array([-0.5, -0.5, -0.5])
+    # scale engineer goal to[-1, 1]^N
+    engineer_goal = scale_vec(engineer_goal, initial_space)
+    # inverse model
+    knn = KNNRegressor(n_neighbors=1)
+
+    # exploration_noise
+    noise = 0.1
+
+    return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
