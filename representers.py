@@ -6,7 +6,6 @@ from gep_utils import *
 class CheetahRepresenter():
 
     def __init__(self):
-
         self._description = ['mean_vx', 'min_z']
         # define goal space
         self._initial_space = np.array([[-4, 7],[-3,2]])
@@ -66,38 +65,25 @@ class CMCRepresenter():
 class KobukiRepresenter():
   
     def __init__(self):
-        # self._description = ['red', 'green', 'blue']
-        # define goal space
-        # self._initial_space = np,array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]) # space in which goal are sampled
         self._description = ['engineer_goal_r', 'engineer_goal_g', 'engineer_goal_b']
-        # define goal space
-        self._initial_space = np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]) # space in which goal are sampled
+        self._initial_space = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]]) # space in which goal are sampled
         self._representation = None
 
     def represent(self, obs_seq, act_seq):
-        print(obs_seq)
-        #print('OBS_seq')
-        #print(obs_seq)
-        #print(obs_seq.shape)
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((5, -1))[:, -1]
-        #print('OBS_seq')
         #print(obs_seq)
-        #print(obs_seq.shape)
-        #objects = [ obs_seq[0,:,-1][x] for x in idxs ]i
-        print(obs_seq)
-        #target = min(enumerate(objects), key=lambda x: x[1])[0]
-        
-        #print('Target')
         
         self._representation = np.array(obs_seq[2:])
-        print('Representation')
-        print(self._representation )
+        #print('Representation')
+        #print(self._representation )
+        
+        # scale representation to [-1,1]^N
+        
         self._representation = scale_vec(self._representation, self._initial_space)
-        print('After scale Representation')
-        print(self._representation )
+        #print('After scale Representation')
+        #print(self._representation)
         
         self._representation.reshape(1, -1)
-
         return self._representation
 
     @property
