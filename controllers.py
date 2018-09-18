@@ -30,8 +30,8 @@ class NNController():
         self._weights = None # weights of the NN
 
     def step(self, policy, obs):
-
         obs_in = np.copy(obs.astype(np.float)).squeeze()
+        #print('obs_in:' + str(obs_in))
         policy_in = np.copy(policy).squeeze()
 
         # format weights
@@ -54,13 +54,12 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([5]) / self._range) - np.ones([5])
-
+            obs_in = ((obs_in - self._min) * 2*np.ones([2]) / self._range) - np.ones([2])
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
-
         y = x.mm(self._weights[0])
-
+        #print('y:' + str(y))
+        #print('weight:' + str(self._weights))
 
         for i in range(len(self._layer_sizes) - 2):
             if self._activation_function == 'relu':
@@ -72,7 +71,6 @@ class NNController():
             y = y.mm(self._weights[i + 1])
         y = y.numpy()
         y = np.tanh(np.longfloat(self._controller_tmp * y))
-
         self._action = y[0, :].astype(np.float64)
         if self._action.size == 1:
             self._action = np.array([self._action])

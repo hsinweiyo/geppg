@@ -23,7 +23,7 @@ def scale_vec(vector, initial_space):
     Scale vector from initial space to [-1,1]^N
     """
     vec_in = np.copy(vector)
-    vec_out = (vec_in - initial_space[:, 0])  / np.diff(initial_space).squeeze() 
+    vec_out = (vec_in - initial_space[:, 0]) * 2 / np.diff(initial_space).squeeze() - 1 
 
     return vec_out
 

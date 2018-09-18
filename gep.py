@@ -20,6 +20,7 @@ from configs import *
 
 
 saving_folder = './results/'
+traj_folder = './trajectory/'
 trial_id = 1
 nb_runs = 1
 env_id = 'Kobuki-v0' #'HalfCheetah-v2'# #'MountainCarContinuous-v0' #
@@ -31,14 +32,7 @@ obj_dict = dict()
 n_traj = 0
 sample_obs = []
 
-def color_code2name(code):
-    if np.all(code == (1, 0, 0)): return "red"
-    if np.all(code == (0, 1, 0)): return "green"
-    if np.all(code == (0, 0, 1)): return "blue"
-    if np.all(code == (1, 0, 1)): return "purple"
-    if np.all(code == (0, 1, 1)): return "cyan"
-
-def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder):
+def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder):
 
     # create data path
     data_path = create_data_path(saving_folder, env_id, trial_id)
@@ -61,7 +55,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
         # overun some settings
         nb_explorations = nb_exploration
-        nb_tests = 100
+        #nb_tests = 100
         offline_eval = (1e6, 10) #(x,y): y evaluation episodes every x (done offline)
 
         train_perfs = []
@@ -72,14 +66,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('FiveTargetColor-v0')
+        env = gym.make('MassPoint-v0')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
         action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
         observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
         reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
-        n_traj = 1
 
         # bootstrap phase
         # # # # # # # # # # #
@@ -87,6 +80,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             print('Bootstrap episode #', ep+1)
             # sample policy at random
             policy = np.random.random(nb_weights) * 2 - 1
+            #print('policy' + str(policy))
 
             # play policy and update knn
             obs, act, rew = play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller,
@@ -100,6 +94,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
             # offline tests
             if ep in test_ind:
+                print('Engineer Goal:')
+                print(engineer_goal)
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
                                     controller, eval_perfs)
 
@@ -120,24 +116,22 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             observation_seqs = np.concatenate([observation_seqs, obs], axis=0)
             reward_seqs = np.concatenate([reward_seqs, rew], axis=0)
             train_perfs.append(np.nansum(rew))
-            
-            # TODO dirty bug
-            if (ep+1) % 20 == 0.0:
-                ran_key, engineer_goal = random.choice(list(obj_dict.items()))
-                print('Engineer Goal:')
-                print(engineer_goal)
-
+           
             # offline tests
             if ep in test_ind:
+                engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+                print('Engineer Goal:')
+                print(engineer_goal)
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
 
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            ran_key, engineer_goal = random.choice(list(obj_dict.items()))
-            print('Test episode #', ep+1)
-            print('Engineer Goal:')
-            print(engineer_goal)
+            engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+            #print('Test episode #', ep+1)
+            #print('Engineer Goal:')
+            #print(engineer_goal)
+            #print('nb_test:', nb_tests)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
         print('Observation:')
@@ -191,32 +185,48 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     rew[0, :, 0] = 0
     done = False  # termination signal
     max_timestep = False
+    env_timestep = 0
 
     # Check Observation Range
     for t in range(nb_timesteps):
-        if done:
-            break
-        elif t == 210:
-            max_timestep = True
-            break
-
+        #print('policy:' + str(policy))
+        #print('obs:' + str(obs[0, :, t]))
         act[0, :, t] = controller.step(policy, obs[0, :, t]).reshape(1, -1)
+        #print('act:' + str(act[0, :, t]))
         out = env.step(np.copy(act[0, :, t]))
         
+
         # env.render()
         obs[0, :, t + 1] = out[0]
         rew[0, :, t + 1] = out[1]
         done = out[2]
+        info = out[3]
+        env_timestep = info['t']
+
+        if done:
+            #print('(done)t & env_t:' + str(t) + ' ' + str(env_timestep))
+            if env_timestep == 200:
+                max_timestep = True
+            break
+        #elif t==nb_timesteps-1:
+            #print('t(max) & env_t:' + str(t) + ' ' + str(env_timestep))
 
     # convert the trajectory into a representation (=behavioral descriptor)
-    if max_timestep == True:
-        rep = np.array([ 0.5, 0.5, 0.5])    
-        print('Representation w/ Max:' + str(rep))
+    rep = representer.represent(obs, act)
+    #print('Representatio: ' + str(rep))
+    #print('obs: ' + str(obs[0, :, env_timestep]))
+
+    '''if max_timestep == True:
+        rep = np.array([0.0, 0.0])
+        #print('Representation w/ Max:' + str(rep))
+        #print('obs: ' + str(obs[0, :, -1]))
     else:
         rep = representer.represent(obs, act)
         print('Representation w/o Max:' + str(rep))
+        print('obs: ' + str(obs[0, :, env_timestep]))'''
 
     # update inverse model
+    #print ('knn._X: '+str(knn._X))
     knn.update(X=rep, Y=policy)
 
     return obs, act, rew
@@ -227,21 +237,22 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     """
     # use scaled engineer goal and find policy of nearest neighbor in representation space
     global n_traj
+    #print('engl: ' + str(engineer_goal))
+    #coord = [18, 54, 90, 126, 162]
+    #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     best_policy = knn.predict(engineer_goal)[0, :]
 
     returns = []
     for i in range(nb_eps):
         rew = np.zeros([nb_rew, nb_timesteps + 1])
         rew.fill(np.nan)
-        goal_dict = dict()
-        goal_dict['engineer_goal_r'] = engineer_goal[0]
-        goal_dict['engineer_goal_g'] = engineer_goal[1]
-        goal_dict['engineer_goal_b'] = engineer_goal[2]
 
-        obs = env.reset() # TODO: need pass config to environment
+        env.reset()
+        obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
         rew[:, 0] = 0
         done = False
-        plt_obs = [obs[0:2]] # plot
+        info = {}
+        plt_obs = [obs] # plot
         
         for t in range(nb_timesteps):
             if done: break
@@ -251,15 +262,21 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             obs = out[0].squeeze().astype(np.float)
             rew[:, t + 1] = out[1]
             done = out[2]
+            info = out[3]
             
-            plt_obs.append(obs[0:2]) # plot
+            plt_obs.append(obs) # plot
 
         returns.append(np.nansum(rew))
         target = np.where(np.array(obs[2:] == engineer_goal))
         
-        key = "_".join([color_code2name(engineer_goal), str(i), str(n_traj)])
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj), str(info['hit'])])
         traj_dict[key] = np.array(plt_obs)
+        # write the observation to text file
+        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
+            pickle.dump(plt_obs, text_file)
+            
         n_traj += 1
+        
 
     eval_perfs.append(np.array(returns).mean())
 
@@ -291,23 +308,11 @@ if __name__ == '__main__':
     parser.add_argument('--study', type=str, default=study) #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=nb_exploration)
     parser.add_argument('--saving_folder', type=str, default=saving_folder)
+    parser.add_argument('--traj_folder', type=str, default=traj_folder)
     #parser.add_argument('--video_folder', type=str, default=video_folder)
     args = vars(parser.parse_args())
 
     gep_perf = np.zeros([nb_runs])
-    obj_dict['1'] = np.array([1.,0.,0.])
-    obj_dict['2'] = np.array([0.,1.,0.])
-    obj_dict['3'] = np.array([0.,0.,1.])
-    obj_dict['4'] = np.array([1.,0.,1.])
-    obj_dict['5'] = np.array([0.,1.,1.])
-
-    coord_dict ={
-        "red"   : [np.cos(np.deg2rad(18)), np.sin(np.deg2rad(18))],
-        "green" : [np.cos(np.deg2rad(90)), np.sin(np.deg2rad(90))],
-        "blue"  : [np.cos(np.deg2rad(162)), np.sin(np.deg2rad(162))], 
-        "purple": [np.cos(np.deg2rad(234)), np.sin(np.deg2rad(234))],
-        "cyan"  : [np.cos(np.deg2rad(306)), np.sin(np.deg2rad(306))],
-    }
     
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
@@ -321,8 +326,7 @@ if __name__ == '__main__':
         plt.axis([-1.0, 1.0, -1.0, 1.0])
         
         x_z = key.split('_')
-        color = x_z[0]
-        
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], coord_dict[color][0], coord_dict[color][1], 'ro')
+
+        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
         fig.savefig('figures/'+ key +'.png')
         plt.close()

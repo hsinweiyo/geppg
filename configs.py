@@ -9,8 +9,8 @@ from gep_utils import *
 def cheetah_config():
 
     # run parameters
-    nb_bootstrap = 50
-    nb_explorations = 500
+    nb_bootstrap = 200
+    nb_explorations = 1000
     nb_tests = 100
     nb_timesteps = 1000
     offline_eval = (1e6, 10)  # (x,y): y evaluation episodes every x (done offline)
@@ -86,9 +86,9 @@ def cmc_config():
 
 def kobuki_config():
     # run parameters
-    nb_bootstrap = 10
-    nb_explorations = 50
-    nb_tests = 20
+    nb_bootstrap = 200
+    nb_explorations = 1000
+    nb_tests = 1200
     nb_timesteps = 200
     offline_eval = (1e6, 10)
 
@@ -96,9 +96,10 @@ def kobuki_config():
     hidden_sizes = []
     controller_tmp = 1.
     activation = 'relu'
-    subset_obs = range(5)
+    subset_obs = range(2)
     norm_values = None
-    scale = np.vstack([np.array([[-1.0,1.0],]*2), np.array([[0.0,1.0],]*3)])
+    #scale = np.vstack([np.array([[-1.0,1.0],]*2)])
+    scale = np.array([[-1.0,1.0],[-1.0, 1.0]])
     controller = NNController(hidden_sizes, controller_tmp, subset_obs, 2, norm_values, scale, activation)
     nb_weights = controller.nb_weights
 
@@ -107,7 +108,7 @@ def kobuki_config():
     initial_space = representer.initial_space
     goal_space = representer.initial_space
     nb_rep = representer.dim
-    engineer_goal = np.array([1.0, 0.0, 0.0])
+    engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
     
     # scale engineer goal to[-1, 1]^N
     engineer_goal = scale_vec(engineer_goal, initial_space)
