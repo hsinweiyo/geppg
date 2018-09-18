@@ -66,7 +66,7 @@ class KobukiRepresenter():
   
     def __init__(self):
         self._description = ['engineer_goal_x', 'engineer_goal_y']
-        self._initial_space = np.array([[-1.0, 1.0], [-1.0, 1.0]]) # space in which goal are sampled
+        self._initial_space = np.array([[-0.2, 0.2], [-0.2, 0.2]]) # space in which goal are sampled
         self._representation = None
 
     def represent(self, obs_seq, act_seq):

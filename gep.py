@@ -66,7 +66,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('MassPoint-v0')
+        env = gym.make('ReacherGEP-v0')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -201,12 +201,12 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         rew[0, :, t + 1] = out[1]
         done = out[2]
         info = out[3]
-        env_timestep = info['t']
+        #env_timestep = info['t']
 
         if done:
             #print('(done)t & env_t:' + str(t) + ' ' + str(env_timestep))
-            if env_timestep == 200:
-                max_timestep = True
+            #if env_timestep == 200:
+            #    max_timestep = True
             break
         #elif t==nb_timesteps-1:
             #print('t(max) & env_t:' + str(t) + ' ' + str(env_timestep))
@@ -248,7 +248,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
-        obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
+        obs = env.unwrapped.reset() # TODO: need pass config to environment
         rew[:, 0] = 0
         done = False
         info = {}

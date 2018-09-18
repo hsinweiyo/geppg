@@ -88,7 +88,7 @@ def kobuki_config():
     # run parameters
     nb_bootstrap = 200
     nb_explorations = 1000
-    nb_tests = 1200
+    nb_tests = 10
     nb_timesteps = 200
     offline_eval = (1e6, 10)
 
@@ -96,10 +96,10 @@ def kobuki_config():
     hidden_sizes = []
     controller_tmp = 1.
     activation = 'relu'
-    subset_obs = range(2)
+    subset_obs = range(6)
     norm_values = None
     #scale = np.vstack([np.array([[-1.0,1.0],]*2)])
-    scale = np.array([[-1.0,1.0],[-1.0, 1.0]])
+    scale = np.array([[-1.0,1.0],[-1.0, 1.0],[-1.0, 1.0],[-1.0, 1.0],[0.0,1.0],[0.0,1.0]])
     controller = NNController(hidden_sizes, controller_tmp, subset_obs, 2, norm_values, scale, activation)
     nb_weights = controller.nb_weights
 
@@ -108,7 +108,7 @@ def kobuki_config():
     initial_space = representer.initial_space
     goal_space = representer.initial_space
     nb_rep = representer.dim
-    engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+    engineer_goal = np.random.uniform(-0.2, 0.2, (2,))
     
     # scale engineer goal to[-1, 1]^N
     engineer_goal = scale_vec(engineer_goal, initial_space)
