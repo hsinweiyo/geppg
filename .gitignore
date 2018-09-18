@@ -117,3 +117,8 @@ videos
 *.swp
 UnityGEP_20.zip
 results
+trajectory
+MUJOCO_LOG.TXT
+.DS_Store
+._.DS_Store
+figures_reacher

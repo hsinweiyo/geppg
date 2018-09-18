@@ -252,7 +252,11 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew[:, 0] = 0
         done = False
         info = {}
-        plt_obs = [obs[0]+obs[1], obs[2]+ obs[3]] # plot
+
+
+        x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+        plt_obs = [[x,y]] # plot
+
         
         for t in range(nb_timesteps):
             if done: break
@@ -263,8 +267,10 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             rew[:, t + 1] = out[1]
             done = out[2]
             #info = out[3]
-            
-            plt_obs.append(obs[0]+obs[1],obs[2]+obs[3]) # plot
+
+            x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+            plt_obs.append([x,y]) # plot
+       
 
         returns.append(np.nansum(rew))
         #target = np.where(np.array(obs[2:] == engineer_goal))
@@ -323,7 +329,7 @@ if __name__ == '__main__':
    
     for key in traj_dict:
         fig = plt.figure()
-        plt.axis([-1.0, 1.0, -1.0, 1.0])
+        plt.axis([-2.0, 2.0, -2.0, 2.0])
         
         x_y = key.split('_')
 
