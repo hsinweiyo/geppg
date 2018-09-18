@@ -252,7 +252,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew[:, 0] = 0
         done = False
         info = {}
-        plt_obs = [obs] # plot
+        plt_obs = [obs[0]+obs[1], obs[2]+ obs[3]] # plot
         
         for t in range(nb_timesteps):
             if done: break
@@ -262,14 +262,14 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             obs = out[0].squeeze().astype(np.float)
             rew[:, t + 1] = out[1]
             done = out[2]
-            info = out[3]
+            #info = out[3]
             
-            plt_obs.append(obs) # plot
+            plt_obs.append(obs[0]+obs[1],obs[2]+obs[3]) # plot
 
         returns.append(np.nansum(rew))
-        target = np.where(np.array(obs[2:] == engineer_goal))
+        #target = np.where(np.array(obs[2:] == engineer_goal))
         
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj), str(info['hit'])])
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
@@ -325,7 +325,7 @@ if __name__ == '__main__':
         fig = plt.figure()
         plt.axis([-1.0, 1.0, -1.0, 1.0])
         
-        x_z = key.split('_')
+        x_y = key.split('_')
 
         plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
         fig.savefig('figures/'+ key +'.png')
