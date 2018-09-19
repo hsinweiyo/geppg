@@ -30,6 +30,9 @@ nb_exploration = 500 # nb of episodes for gep exploration
 traj_dict = dict()
 obj_dict = dict()
 n_traj = 0
+Avg_error_x = 0
+Avg_error_y = 0
+gep_error = []
 sample_obs = []
 
 def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder):
@@ -61,6 +64,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         train_perfs = []
         eval_perfs = []
         final_eval_perfs = []
+
 
         # compute test indices:
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
@@ -134,8 +138,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             #print('nb_test:', nb_tests)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
-        print('Observation:')
-        print(obs)
+        #print('Observation:')
+        #print(obs)
         print('Run performance: ', np.nansum(rew))
 
         print('Final performance for the run: ', np.array(final_eval_perfs).mean())
@@ -182,11 +186,13 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     act.fill(np.nan)
     rew.fill(np.nan)
     obs[0, :, 0] = env.reset()
+    #print('obs reset: ' + str(obs))
     rew[0, :, 0] = 0
     done = False  # termination signal
     max_timestep = False
     env_timestep = 0
 
+    global n_traj
     # Check Observation Range
     for t in range(nb_timesteps):
         #print('policy:' + str(policy))
@@ -213,8 +219,12 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
 
     # convert the trajectory into a representation (=behavioral descriptor)
     rep = representer.represent(obs, act)
-    #print('Representatio: ' + str(rep))
-    #print('obs: ' + str(obs[0, :, env_timestep]))
+    x, y = obs[:,0,:] + obs[:,1,:], obs[:,2,:] + obs[:,3,:]
+    plt_obs = np.reshape(np.array([x,y]), (2,31))
+    plt_obs = plt_obs.transpose()
+    key = "_".join([str(plt_obs[-1,0]), str(plt_obs[-1,1]), str(n_traj)])
+    # traj_dict[key] = np.array(plt_obs)
+    #n _traj += 1
 
     '''if max_timestep == True:
         rep = np.array([0.0, 0.0])
@@ -273,7 +283,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
         returns.append(np.nansum(rew))
         #target = np.where(np.array(obs[2:] == engineer_goal))
-        
+
+        error_x, error_y = x - engineer_goal[0], y - engineer_goal[1]
+        gep_error.append(np.array([error_x,error_y]))
+        # print('Error: ' + str(gep_error))
+        #print ('Plt_obs: ' + str(plt_obs))
+        # print('Size of plt_obs: ' + str(np.shape(plt_obs)))
         key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
@@ -319,12 +334,14 @@ if __name__ == '__main__':
 
     gep_perf = np.zeros([nb_runs])
     
+
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
         gep_perf[i], policies = run_experiment(**args)
         print(gep_perf)
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
+        print('Average error: ' + str(gep_error[0].mean()) + " " + str(gep_error[1].mean()))
    
     for key in traj_dict:
         fig = plt.figure()

@@ -6,6 +6,7 @@ from inverse_models import KNNRegressor
 
 from gep_utils import *
 
+import random
 def cheetah_config():
 
     # run parameters
@@ -89,7 +90,10 @@ def kobuki_config():
     nb_bootstrap = 200
     nb_explorations = 1000
     nb_tests = 10
-    nb_timesteps = 200
+    
+    #nb_timesteps = random.randint(1,50)
+    #print('Timesteps: ' + str(nb_timesteps))
+    nb_timesteps = 30
     offline_eval = (1e6, 10)
 
     # controller parameters
