@@ -25,7 +25,7 @@ def scale_vec(vector, initial_space):
     vec_in = np.copy(vector)
     vec_out = (vec_in - initial_space[:, 0]) * 2 / np.diff(initial_space).squeeze() - 1 
 
-    return vec_out
+    return vec_out * 2
 
 def sample(space):
     """

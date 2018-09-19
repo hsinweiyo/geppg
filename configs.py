@@ -112,7 +112,7 @@ def kobuki_config():
     initial_space = representer.initial_space
     goal_space = representer.initial_space
     nb_rep = representer.dim
-    engineer_goal = np.random.uniform(-0.2, 0.2, (2,))
+    engineer_goal = np.random.uniform(-0.2, 0.2, (4,))
     
     # scale engineer goal to[-1, 1]^N
     engineer_goal = scale_vec(engineer_goal, initial_space)
@@ -121,7 +121,7 @@ def kobuki_config():
     knn = KNNRegressor(n_neighbors=1)
 
     # exploration_noise
-    noise = 0.1
+    noise = 0.5
 
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights

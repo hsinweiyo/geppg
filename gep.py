@@ -70,7 +70,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('ReacherGEP-v0')
+        env = gym.make('ReacherGEPTraj-v0')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -131,10 +131,14 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            engineer_goal = np.random.uniform(low=-1.0, high=1.0, size=2)
+            theta = np.random.sample() * 360
+            rad = np.random.sample() * 2
+            theta_m = np.random.sample() * 360
+            rad_m = np.random.sample() * 2
+            engineer_goal = np.array([np.cos(np.deg2rad(theta_m)) * rad_m, np.sin(np.deg2rad(theta_m)) * rad_m, np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
             #print('Test episode #', ep+1)
-            #print('Engineer Goal:')
-            #print(engineer_goal)
+            print('Engineer Goal:')
+            print(engineer_goal)
             #print('nb_test:', nb_tests)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
@@ -289,10 +293,10 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         # print('Error: ' + str(gep_error))
         #print ('Plt_obs: ' + str(plt_obs))
         # print('Size of plt_obs: ' + str(np.shape(plt_obs)))
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
-        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
+        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
             pickle.dump(plt_obs, text_file)
             
         n_traj += 1
@@ -348,7 +352,10 @@ if __name__ == '__main__':
         plt.axis([-2.0, 2.0, -2.0, 2.0])
         
         x_z = key.split('_')
+        print(x_z)
 
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+        plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+        plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
         fig.savefig('figures/'+ key +'.png')
         plt.close()
