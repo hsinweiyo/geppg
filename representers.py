@@ -70,10 +70,11 @@ class KobukiRepresenter():
         self._representation = None
 
     def represent(self, obs_seq, act_seq):
-        obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((2, -1))[:, -1]
-        #print(obs_seq)
-        
-        self._representation = np.array(obs_seq)
+        obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((6, -1))[:, -1]
+        print(obs_seq)
+       
+        x, y = obs_seq[0]+obs_seq[1], obs_seq[2]+obs_seq[3]
+        self._representation = np.array([x,y])
         #print('Representation')
         #print(self._representation )
         

@@ -19,12 +19,12 @@ from gep_utils import *
 from configs import *
 
 
-saving_folder = './results/'
+saving_folder = './outputs/'
 traj_folder = './trajectory/'
 trial_id = 1
 nb_runs = 1
 env_id = 'Kobuki-v0' #'HalfCheetah-v2'# #'MountainCarContinuous-v0' #
-study = 'DDPG' # 'GEP' # 'GEPPG' #
+study = 'GEP' # 'GEP' # 'GEPPG' # 'DDPG'
 ddpg_noise = 'ou_0.3'# 'adaptive_param_0.2' #
 nb_exploration = 500 # nb of episodes for gep exploration
 traj_dict = dict()
@@ -127,7 +127,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+            engineer_goal = np.random.uniform(low=-1.0, high=1.0, size=2)
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
@@ -248,7 +248,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
-        obs = env.unwrapped.reset() # TODO: need pass config to environment
+        obs = env.unwrapped.reset_model(engineer_goal) # TODO: need pass config to environment
         rew[:, 0] = 0
         done = False
         info = {}
@@ -270,7 +270,6 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
             x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
             plt_obs.append([x,y]) # plot
-       
 
         returns.append(np.nansum(rew))
         #target = np.where(np.array(obs[2:] == engineer_goal))
@@ -331,7 +330,7 @@ if __name__ == '__main__':
         fig = plt.figure()
         plt.axis([-2.0, 2.0, -2.0, 2.0])
         
-        x_y = key.split('_')
+        x_z = key.split('_')
 
         plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
         fig.savefig('figures/'+ key +'.png')
