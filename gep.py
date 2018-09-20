@@ -56,6 +56,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
             nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config()
 
+        
         # overun some settings
         nb_explorations = nb_exploration
         #nb_tests = 100
@@ -84,6 +85,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             print('Bootstrap episode #', ep+1)
             # sample policy at random
             policy = np.random.random(nb_weights) * 2 - 1
+            #policy = policy * 0.1
             #print('policy' + str(policy))
 
             # play policy and update knn
@@ -123,15 +125,27 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
            
             # offline tests
             if ep in test_ind:
-                engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
-                print('Engineer Goal:')
-                print(engineer_goal)
+                while True:
+                    xpos = np.random.sample() * 2 - 1
+                    ypos = np.random.sample() * 2 - 1
+                    engineer_goal = np.array([xpos, ypos])
+                    xpos *= 0.21
+                    ypos *= 0.21
+                    if np.linalg.norm([xpos, ypos]) <= 0.21:
+                        break
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
 
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            engineer_goal = np.random.uniform(low=-1.0, high=1.0, size=2)
+            while True:
+                xpos = np.random.sample() * 2 - 1
+                ypos = np.random.sample() * 2 - 1
+                engineer_goal = np.array([xpos, ypos])
+                xpos *= 0.21
+                ypos *= 0.21
+                if np.linalg.norm([xpos, ypos]) <= 0.21:
+                    break
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
@@ -189,41 +203,40 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     #print('obs reset: ' + str(obs))
     rew[0, :, 0] = 0
     done = False  # termination signal
-    max_timestep = False
     env_timestep = 0
 
     global n_traj
+    #env.render()
     # Check Observation Range
     for t in range(nb_timesteps):
-        #print('policy:' + str(policy))
-        #print('obs:' + str(obs[0, :, t]))
         act[0, :, t] = controller.step(policy, obs[0, :, t]).reshape(1, -1)
-        #print('act:' + str(act[0, :, t]))
+        # check action as obs close to zero
+        #x, y = (obs[:,0,t]*(1+obs[:,1,t])+obs[:,2,t]*obs[:,3,t])/10, (obs[:,2,t]*(1+obs[:,1,t])+obs[:,0,t]*obs[:,3,t])/10
+        #if abs(x) <= 0.02 and abs(y) <= 0.02:
+        #    print('x, y:', x, ' ', y)
+        #    print('action:', act[0,:,t])
         out = env.step(np.copy(act[0, :, t]))
         
-
-        # env.render()
         obs[0, :, t + 1] = out[0]
         rew[0, :, t + 1] = out[1]
         done = out[2]
         info = out[3]
-        #env_timestep = info['t']
+        env_timestep = info['t']
 
         if done:
-            #print('(done)t & env_t:' + str(t) + ' ' + str(env_timestep))
-            #if env_timestep == 200:
-            #    max_timestep = True
             break
-        #elif t==nb_timesteps-1:
-            #print('t(max) & env_t:' + str(t) + ' ' + str(env_timestep))
-
     # convert the trajectory into a representation (=behavioral descriptor)
+    #env.close()
     rep = representer.represent(obs, act)
-    x, y = obs[:,0,:] + obs[:,1,:], obs[:,2,:] + obs[:,3,:]
-    plt_obs = np.reshape(np.array([x,y]), (2,31))
+    #x, y = obs[:,0,:] + obs[:,1,:], obs[:,2,:] + obs[:,3,:]
+    x, y = obs[:,0,:], obs[:,1,:]
+    
+    plt_obs = np.reshape(np.array([x,y]), (2,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    key = "_".join([str(plt_obs[-1,0]), str(plt_obs[-1,1]), str(n_traj)])
-    # traj_dict[key] = np.array(plt_obs)
+    key = "_".join([str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
+    #print('env_timestep-1:' + str(plt_obs[env_timestep-1]))
+    #print('env_timestep:' + str(plt_obs[env_timestep]))
+    #traj_dict[key] = np.array(plt_obs)
     #n _traj += 1
 
     '''if max_timestep == True:
@@ -262,12 +275,13 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew[:, 0] = 0
         done = False
         info = {}
+        env_timestep = 0
 
 
-        x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+        #x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+        x, y = obs[0], obs[1]
         plt_obs = [[x,y]] # plot
 
-        
         for t in range(nb_timesteps):
             if done: break
             
@@ -276,24 +290,28 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             obs = out[0].squeeze().astype(np.float)
             rew[:, t + 1] = out[1]
             done = out[2]
-            #info = out[3]
-
-            x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+            info = out[3]
+            env_timestep = info['t']
+            #env.render()
+            
+            #x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+            x, y = obs[0], obs[1]
             plt_obs.append([x,y]) # plot
-
+        
+        #env.close()
         returns.append(np.nansum(rew))
         #target = np.where(np.array(obs[2:] == engineer_goal))
 
-        error_x, error_y = x - engineer_goal[0], y - engineer_goal[1]
-        gep_error.append(np.array([error_x,error_y]))
+        #error_x, error_y = x - engineer_goal[0], y - engineer_goal[1]
+        #gep_error.append(np.array([error_x,error_y]))
         # print('Error: ' + str(gep_error))
         #print ('Plt_obs: ' + str(plt_obs))
         # print('Size of plt_obs: ' + str(np.shape(plt_obs)))
         key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
-        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
-            pickle.dump(plt_obs, text_file)
+        #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
+            #pickle.dump(plt_obs, text_file)
             
         n_traj += 1
         
@@ -341,14 +359,21 @@ if __name__ == '__main__':
         print(gep_perf)
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
-        print('Average error: ' + str(gep_error[0].mean()) + " " + str(gep_error[1].mean()))
+        #print('Average error: ' + str(gep_error[0].mean()) + " " + str(gep_error[1].mean()))
    
+    #fig = plt.figure()
+    #plt.axis([-2.0, 2.0, -2.0, 2.0])
+
     for key in traj_dict:
         fig = plt.figure()
-        plt.axis([-2.0, 2.0, -2.0, 2.0])
-        
+        plt.axis([-1, 1, -1, 1])
         x_z = key.split('_')
-
+        # if (int(x_z[2]) > 2000):
         plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
-        fig.savefig('figures/'+ key +'.png')
+        #print(x_z[2])
+        #plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
+        fig.savefig('figures/'+key + '.png')
         plt.close()
+
+    #fig.savefig('figures/'+key + '.png')
+    #plt.close()

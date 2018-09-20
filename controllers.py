@@ -43,6 +43,8 @@ class NNController():
             self._weights.append(torch.from_numpy(
                 policy_in[ind_weights].reshape([self._layer_sizes[i], self._layer_sizes[i + 1]])).type(self._dtype))
 
+        # (paulolbear) lower the last weight
+        #self._weights[-1] *= 0.1
         # take only a subset of observation as input to the NN
         if self._subset_obs is not None:
             obs_in = obs_in[self._subset_obs]
@@ -54,7 +56,7 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([6]) / self._range) - np.ones([6])
+            obs_in = ((obs_in - self._min) * 2*np.ones([4]) / self._range) - np.ones([4])
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
         y = x.mm(self._weights[0])
