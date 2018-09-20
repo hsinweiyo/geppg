@@ -118,7 +118,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
            
             # offline tests
             if ep in test_ind:
-                engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+                engineer_goal = np.random.uniform(-1.0, 1.0, (4,))
                 print('Engineer Goal:')
                 print(engineer_goal)
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
@@ -127,7 +127,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
+            engineer_goal[0] = np.random.uniform(-.5, .5)
+            engineer_goal[1] = np.random.uniform(-.5, 0)
+            engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
@@ -157,9 +159,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
         with open(data_path+'save_gep.pk', 'wb') as f:
             pickle.dump(gep_memory, f)
-        
     
-
     # print(pickle.load(open(data_path+'save_gep.pk', 'r')))
 
     return np.array(final_eval_perfs).mean(), knn._Y
@@ -208,11 +208,14 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             if env_timestep == 200:
                 max_timestep = True
             break
-        #elif t==nb_timesteps-1:
-            #print('t(max) & env_t:' + str(t) + ' ' + str(env_timestep))
 
     # convert the trajectory into a representation (=behavioral descriptor)
     rep = representer.represent(obs, act)
+    plt_obs = np.reshape(np.array(obs), (2,nb_timesteps+1))
+    plt_obs = plt_obs.transpose()
+    #print(plt_obs)
+    #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
+    #traj_dict[key] = np.array(plt_obs)
     #print('Representatio: ' + str(rep))
     #print('obs: ' + str(obs[0, :, env_timestep]))
 
@@ -269,10 +272,10 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         returns.append(np.nansum(rew))
         target = np.where(np.array(obs[2:] == engineer_goal))
         
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj), str(info['hit'])])
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj), str(info['hit'])])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
-        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
+        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
             pickle.dump(plt_obs, text_file)
             
         n_traj += 1
@@ -326,6 +329,9 @@ if __name__ == '__main__':
         
         x_z = key.split('_')
 
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+        #plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+        plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+        plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
         fig.savefig('figures/'+ key +'.png')
         plt.close()
