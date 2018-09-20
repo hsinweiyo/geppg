@@ -55,6 +55,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
         # overun some settings
         nb_explorations = nb_exploration
+        nb_bootstrap = nb_explorations/4
         #nb_tests = 100
         offline_eval = (1e6, 10) #(x,y): y evaluation episodes every x (done offline)
 
@@ -66,7 +67,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('MassPoint-v0')
+        env = gym.make('FiveTarget-v1')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -118,7 +119,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
            
             # offline tests
             if ep in test_ind:
-                engineer_goal = np.random.uniform(-1.0, 1.0, (4,))
+                engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
                 print('Engineer Goal:')
                 print(engineer_goal)
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
@@ -127,17 +128,17 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            engineer_goal[0] = np.random.uniform(-.5, .5)
-            engineer_goal[1] = np.random.uniform(-.5, 0)
-            engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+            #engineer_goal[0] = np.random.uniform(-.5, .5)
+            #engineer_goal[1] = np.random.uniform(-.5, 0)
+            engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
             #print('nb_test:', nb_tests)
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
-        print('Observation:')
-        print(obs)
+        #print('Observation:')
+        #print(obs)
         print('Run performance: ', np.nansum(rew))
 
         print('Final performance for the run: ', np.array(final_eval_perfs).mean())
@@ -185,7 +186,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     rew[0, :, 0] = 0
     done = False  # termination signal
     max_timestep = False
-    env_timestep = 0
+    #env_timestep = 0
 
     # Check Observation Range
     for t in range(nb_timesteps):
@@ -200,18 +201,18 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         obs[0, :, t + 1] = out[0]
         rew[0, :, t + 1] = out[1]
         done = out[2]
-        info = out[3]
-        env_timestep = info['t']
+        #info = out[3]
+        #env_timestep = info['t']
 
         if done:
             #print('(done)t & env_t:' + str(t) + ' ' + str(env_timestep))
-            if env_timestep == 200:
-                max_timestep = True
+            #if env_timestep == 200:
+            #    max_timestep = True
             break
 
     # convert the trajectory into a representation (=behavioral descriptor)
     rep = representer.represent(obs, act)
-    plt_obs = np.reshape(np.array(obs), (2,nb_timesteps+1))
+    plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
     #print(plt_obs)
     #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
@@ -251,7 +252,8 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
-        obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
+        #obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
+        obs = env.unwrapped.reset() # TODO: need pass config to environment
         rew[:, 0] = 0
         done = False
         info = {}
@@ -272,10 +274,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         returns.append(np.nansum(rew))
         target = np.where(np.array(obs[2:] == engineer_goal))
         
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj), str(info['hit'])])
-        traj_dict[key] = np.array(plt_obs)
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
+        #key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj), str(info['hit'])])
+        #traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
-        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
+        #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
+        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
             pickle.dump(plt_obs, text_file)
             
         n_traj += 1
@@ -323,15 +327,16 @@ if __name__ == '__main__':
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
    
-    for key in traj_dict:
-        fig = plt.figure()
-        plt.axis([-1.0, 1.0, -1.0, 1.0])
+    
+    #for key in traj_dict:
+     #   fig = plt.figure()
+       # plt.axis([-1.0, 1.0, -1.0, 1.0])
         
-        x_z = key.split('_')
+       # x_z = key.split('_')
 
         #plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
-        plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
-        plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
-        fig.savefig('figures/'+ key +'.png')
-        plt.close()
+        #plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+        #plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+       # plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+        #fig.savefig('figures/'+ key +'.png')
+        #plt.close()'''

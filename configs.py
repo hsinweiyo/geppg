@@ -86,8 +86,8 @@ def cmc_config():
 
 def kobuki_config():
     # run parameters
-    nb_bootstrap = 2000
-    nb_explorations = 1000
+    nb_bootstrap = 300
+    nb_explorations = 100
     nb_tests = 100
     nb_timesteps = 200
     offline_eval = (1e6, 10)
@@ -108,7 +108,7 @@ def kobuki_config():
     initial_space = representer.initial_space
     goal_space = representer.initial_space
     nb_rep = representer.dim
-    engineer_goal = np.random.uniform(-1.0, 1.0, (4,))
+    engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
     
     # scale engineer goal to[-1, 1]^N
     engineer_goal = scale_vec(engineer_goal, initial_space)

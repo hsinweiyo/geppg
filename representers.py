@@ -65,16 +65,14 @@ class CMCRepresenter():
 class KobukiRepresenter():
   
     def __init__(self):
-        self._description = ['engineer_goal_mid_x', 'engineer_goal_mid_y', 'engineer_goal_x', 'engineer_goal_y']
-        self._initial_space = np.array([[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]) # space in which goal are sampled
+        self._description = ['engineer_goal_x', 'engineer_goal_y']
+        self._initial_space = np.array([[-1.0, 1.0], [-1.0, 1.0]]) # space in which goal are sampled
         self._representation = None
 
     def represent(self, obs_seq, act_seq):
-        obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((2, -1))[:, obs_seq.shape[0]//2]
-        obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((2, -1))[:, -1]
-        #print(obs_seq)
+        obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
         
-        self._representation = np.concatenate([obs_seq_mid, obs_seq])
+        self._representation = np.array(obs_seq[:2])
         #print('Representation')
         #print(self._representation )
         
