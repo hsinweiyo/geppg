@@ -10,7 +10,7 @@ def cheetah_config():
 
     # run parameters
     nb_bootstrap = 200
-    nb_explorations = 1000
+    nb_explorations = 2000
     nb_tests = 100
     nb_timesteps = 1000
     offline_eval = (1e6, 10)  # (x,y): y evaluation episodes every x (done offline)
@@ -88,7 +88,7 @@ def kobuki_config():
     # run parameters
     nb_bootstrap = 200
     nb_explorations = 1000
-    nb_tests = 1200
+    nb_tests = 100
     nb_timesteps = 200
     offline_eval = (1e6, 10)
 

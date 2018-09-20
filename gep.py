@@ -96,8 +96,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             if ep in test_ind:
                 print('Engineer Goal:')
                 print(engineer_goal)
-                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
-                                    controller, eval_perfs)
+                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
 
         # exploration phase
         # # # # # # # # # # # #
@@ -122,7 +121,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
                 engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
                 print('Engineer Goal:')
                 print(engineer_goal)
-                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
+                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
+                                    controller, eval_perfs)
 
         # final evaluation phase
         # # # # # # # # # # # # # # #
@@ -276,7 +276,6 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             pickle.dump(plt_obs, text_file)
             
         n_traj += 1
-        
 
     eval_perfs.append(np.array(returns).mean())
 
