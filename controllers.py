@@ -3,7 +3,7 @@ import torch
 
 class NNController():
 
-    def __init__(self, hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale,  activation):
+    def __init__(self, hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation):
 
         self._subset_obs = subset_obs
         self._controller_tmp = controller_tmp
@@ -29,7 +29,7 @@ class NNController():
         self._dtype = torch.FloatTensor  # run on CPU
         self._weights = None # weights of the NN
 
-    def step(self, policy, obs):
+    def step(self, policy, obs, nb_pt):
         obs_in = np.copy(obs.astype(np.float)).squeeze()
         #print('obs_in:' + str(obs_in))
         policy_in = np.copy(policy).squeeze()
@@ -54,7 +54,7 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([2]) / self._range) - np.ones([2])
+            obs_in = ((obs_in - self._min) * 2*np.ones([nb_pt]) / self._range) - np.ones([nb_pt])
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
         y = x.mm(self._weights[0])

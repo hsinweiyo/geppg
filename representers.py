@@ -64,23 +64,25 @@ class CMCRepresenter():
 
 class KobukiRepresenter():
   
-    def __init__(self):
+    def __init__(self, nb_pt):
         self._description = ['engineer_goal_x', 'engineer_goal_y']
-        self._initial_space = np.array([[-1.0, 1.0], [-1.0, 1.0]]) # space in which goal are sampled
+        self._initial_space = np.array([[-1.0, 1.0]]*nb_pt) # space in which goal are sampled
         self._representation = None
 
-    def represent(self, obs_seq, act_seq):
+    def represent(self, obs_seq, act_seq, task, nb_pt):
+        nb_pair = int(nb_pt/2)
+        if task == 'traj':
+            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[0]//nb_pair]
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
         
-        self._representation = np.array(obs_seq[:2])
-        #print('Representation')
-        #print(self._representation )
+        if task == 'traj':
+            self._representation = np.concatenate([obs_seq_mid[:2], obs_seq[:2]])
+        else:
+            self._representation = np.array(obs_seq[:2])
         
         # scale representation to [-1,1]^N
         
         self._representation = scale_vec(self._representation, self._initial_space)
-        #print('After scale Representation')
-        #print(self._representation)
         
         self._representation.reshape(1, -1)
         return self._representation

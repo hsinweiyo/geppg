@@ -23,13 +23,19 @@ class KNNRegressor():
         Y: policy
         """
         if self._X is None:
-            self._X = np.copy(X).reshape(-1,2)
-            self._Y = np.copy(Y).reshape(-1,4)
+            self._X = np.copy(X).reshape(1,-1)
+            self._Y = np.copy(Y).reshape(1,-1)
         else:
-            self._X = np.concatenate([self._X, X.reshape(-1, 2)], axis=0)
-            self._Y = np.concatenate([self._Y, Y.reshape(-1, 4)], axis=0)
+            self._X = np.concatenate([self._X, X.reshape(1, -1)], axis=0)
+            self._Y = np.concatenate([self._Y, Y.reshape(1, -1)], axis=0)
 
         self._model.fit(self._X, self._Y)
+
+    def init_update(self, X, Y):
+        self._X = np.copy(X)
+        self._Y = np.copy(Y)
+        self._model.fit(X, Y)
+
 
     def predict(self, input_X):
         """
@@ -37,7 +43,8 @@ class KNNRegressor():
         """
         
         in_knn = np.copy(input_X)
-        return self._model.predict(in_knn.reshape(-1, 2))
+        #return self._model.predict(in_knn.reshape(-1, 2))
+        return self._model.predict(in_knn.reshape(1, -1))
 
 
     def terminate(self):

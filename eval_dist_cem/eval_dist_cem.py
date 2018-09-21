@@ -11,7 +11,7 @@ distModel.load_model(model_dir)
 plt_sz = 1
 plt_range = [-plt_sz, plt_sz,-plt_sz, plt_sz]
 
-cem = CEM(distModel.pred, 2, v_min=[-1, 0], v_max=[1, 1])
+cem = CEM(distModel.pred, 2, v_min=[-1, 0], v_max=[1, 1], maxits1=100)
 
 def eval_dist_cem(i):
     instr = np.zeros([5])
