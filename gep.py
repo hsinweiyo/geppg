@@ -33,7 +33,7 @@ n_traj = 0
 Avg_error_x = 0
 Avg_error_y = 0
 gep_error = []
-sample_obs = []
+visited_goal = []
 
 def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder):
 
@@ -71,7 +71,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('ReacherGEP-v0')
+        env = gym.make('ReacherGEPTraj-v0')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -128,11 +128,14 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
                 while True:
                     xpos = np.random.sample() * 2 - 1
                     ypos = np.random.sample() * 2 - 1
-                    engineer_goal = np.array([xpos, ypos])
-                    xpos *= 0.21
-                    ypos *= 0.21
-                    if np.linalg.norm([xpos, ypos]) <= 0.21:
+                    if np.linalg.norm([xpos*0.21, ypos*0.21]) <= 0.21:
                         break
+                while True:
+                    mxpos = np.random.sample() * 2 - 1
+                    mypos = np.random.sample() * 2 - 1
+                    if np.linalg.norm([mxpos*0.21, mypos*0.21]) <= 0.21:
+                        break
+                engineer_goal = np.array([mxpos, mypos, xpos, ypos])
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
 
         # final evaluation phase
@@ -141,11 +144,17 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             while True:
                 xpos = np.random.sample() * 2 - 1
                 ypos = np.random.sample() * 2 - 1
-                engineer_goal = np.array([xpos, ypos])
-                xpos *= 0.21
-                ypos *= 0.21
-                if np.linalg.norm([xpos, ypos]) <= 0.21:
+                if np.linalg.norm([xpos*0.21, ypos*0.21]) <= 0.21:
                     break
+            while True:
+                mxpos = np.random.sample() * 2 - 1
+                mypos = np.random.sample() * 2 - 1
+                if np.linalg.norm([mxpos*0.21, mypos*0.21]) <= 0.21:
+                    break
+            engineer_goal = np.array([mxpos, mypos, xpos, ypos])
+            #if ep == 0:
+            #    print('vgoal:', visited_goal)
+            #    engineer_goal = visited_goal
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
@@ -206,6 +215,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     env_timestep = 0
 
     global n_traj
+    global visited_goal
     #env.render()
     # Check Observation Range
     for t in range(nb_timesteps):
@@ -227,13 +237,12 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             break
     # convert the trajectory into a representation (=behavioral descriptor)
     #env.close()
-    rep = representer.represent(obs, act)
+    rep = representer.represent(obs[0,:,0:env_timestep], act)
     #x, y = obs[:,0,:] + obs[:,1,:], obs[:,2,:] + obs[:,3,:]
     x, y = obs[:,0,:], obs[:,1,:]
-    
     plt_obs = np.reshape(np.array([x,y]), (2,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    key = "_".join([str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
+    key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
     #print('env_timestep-1:' + str(plt_obs[env_timestep-1]))
     #print('env_timestep:' + str(plt_obs[env_timestep]))
     #traj_dict[key] = np.array(plt_obs)
@@ -251,6 +260,11 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     # update inverse model
     #print ('knn._X: '+str(knn._X))
     knn.update(X=rep, Y=policy)
+    
+    #if n_traj <= 100:
+    #    visited_goal = rep
+    #    print('vgoal:', visited_goal)
+    #    n_traj += 1
 
     return obs, act, rew
 
@@ -264,6 +278,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     best_policy = knn.predict(engineer_goal)[0, :]
+    #print('best_policy', best_policy)
 
     returns = []
     for i in range(nb_eps):
@@ -277,14 +292,10 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         info = {}
         env_timestep = 0
 
-
-        #x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
         x, y = obs[0], obs[1]
         plt_obs = [[x,y]] # plot
 
         for t in range(nb_timesteps):
-            if done: break
-            
             act = controller.step(best_policy, obs)
             out = env.step(np.copy(act))
             obs = out[0].squeeze().astype(np.float)
@@ -293,10 +304,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             info = out[3]
             env_timestep = info['t']
             #env.render()
-            
-            #x, y = obs[0] + obs[1], obs[2] + obs[3] # plot
+
             x, y = obs[0], obs[1]
             plt_obs.append([x,y]) # plot
+
+            if done: 
+                break
         
         #env.close()
         returns.append(np.nansum(rew))
@@ -305,9 +318,10 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         #error_x, error_y = x - engineer_goal[0], y - engineer_goal[1]
         #gep_error.append(np.array([error_x,error_y]))
         # print('Error: ' + str(gep_error))
-        #print ('Plt_obs: ' + str(plt_obs))
+        #print('Plt_obs: ' + str(plt_obs))
         # print('Size of plt_obs: ' + str(np.shape(plt_obs)))
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
+        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj)])
+        #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
@@ -369,7 +383,8 @@ if __name__ == '__main__':
         plt.axis([-1, 1, -1, 1])
         x_z = key.split('_')
         # if (int(x_z[2]) > 2000):
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'bo')
+        plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
         #print(x_z[2])
         #plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
         fig.savefig('figures/'+key + '.png')

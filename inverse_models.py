@@ -36,6 +36,7 @@ class KNNRegressor():
         input_X: goal (representation)
         """
         in_knn = np.copy(input_X)
+
         return self._model.predict(in_knn.reshape(1, -1))
 
 
