@@ -90,7 +90,6 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             # play policy and update knn
             obs, act, rew = play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller,
                                         representer, knn)
-
             # save
             action_seqs = np.concatenate([action_seqs, act], axis=0)
             observation_seqs = np.concatenate([observation_seqs, obs], axis=0)
@@ -135,11 +134,12 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             #engineer_goal[0] = np.random.uniform(-.5, .5)
             #engineer_goal[1] = np.random.uniform(-.5, 0)
             if task == 'goal':
-                engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
-            else:
-                engineer_goal[0] = np.random.uniform(-.5, .5)
-                engineer_goal[1] = np.random.uniform(-.5, 0)
+                engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
+            elif task == 'traj':
+                engineer_goal[:2] = [np.random.uniform(-.5, .5),np.random.uniform(-.5, 0)] 
                 engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+            else:
+                print('Error of task type')
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
@@ -185,17 +185,22 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     Play a policy in the environment for a given number of timesteps, usin a NN controller.
     Then represent the trajectory and update the inverse model.
     """
+    task = args.task_type
     obs = np.zeros([1, nb_obs, nb_timesteps + 1])
     act = np.zeros([1, nb_act, nb_timesteps])
     rew = np.zeros([1, nb_rew, nb_timesteps + 1])
     obs.fill(np.nan)
     act.fill(np.nan)
     rew.fill(np.nan)
-    obs[0, :, 0] = env.reset()
+    env.reset()
+    if task == 'goal':
+        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([0], np.zeros(4))))
+    else:
+        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([1], np.zeros(4))))
+        
     rew[0, :, 0] = 0
     done = False  # termination signal
     max_timestep = False
-    task = args.task_type
     nb_pt = args.nb_pt
     #env_timestep = 0
     plt_timestep = 0
@@ -203,7 +208,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     for t in range(nb_timesteps):
         
         #print('policy:' + str(policy))
-        act[0, :, t] = controller.step(policy, obs[0, :, t], nb_pt).reshape(1, -1)
+        act[0, :, t] = controller.step(policy, obs[0, :, t]).reshape(1, -1)
         out = env.step(np.copy(act[0, :, t]))
         plt_timestep = t
 
@@ -218,7 +223,8 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             break
 
     # convert the trajectory into a representation (=behavioral descriptor)
-    rep = representer.represent(obs, act, task, nb_pt)
+    # print('Obs seq  shape: ' + str(np.shape(obs)))
+    rep = representer.represent(obs[0,:,0:t+1], act, task, nb_pt)
     plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
     #print(plt_obs)
@@ -240,6 +246,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         print('obs: ' + str(obs[0, :, env_timestep]))'''
 
     # update inverse model
+    # print('Representation in play-policy: ' + str (rep))
     knn.update(X=rep, Y=policy)
 
     return obs, act, rew
@@ -253,7 +260,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     global traj_obs
     task = args.task_type
     nb_pt = args.nb_pt
-    #print('engl: ' + str(engineer_goal))
+    print('Engineer Goal in offline-evalutation: ' + str(engineer_goal))
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     best_policy = knn.predict(engineer_goal)[0, :]
@@ -264,8 +271,14 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
+        if task == 'goal':
+            configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
+            #print('Task id:' + str(configs))
         #obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
-        obs = env.unwrapped.reset() # TODO: need pass config to environment
+        else:
+            configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
+            #print('Task id:' + str(configs))
+        obs = env.unwrapped.reset(configs) 
         rew[:, 0] = 0
         done = False
         info = {}
@@ -276,7 +289,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             plt_timestep = t
             if done: break
             
-            act = controller.step(best_policy, obs, nb_pt)
+            act = controller.step(best_policy, obs)
             out = env.step(np.copy(act))
             obs = out[0].squeeze().astype(np.float)
             rew[:, t + 1] = out[1]
@@ -286,6 +299,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             plt_obs.append(obs) # plot
 
         plt_obs = np.array(plt_obs)
+        #print('plt_obs', plt_obs)
         #traj_obs.append(plt_obs)
         returns.append(np.nansum(rew))
 
@@ -295,14 +309,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         else:
             #key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
-        #key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
-        #key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj), str(info['hit'])])
-        if n_traj % 10 == 0:
-              traj_dict[key] = np.array(plt_obs)
+        
+        traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
-        with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
+        #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
         # with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
-             pickle.dump(plt_obs, text_file)
+             #pickle.dump(plt_obs, text_file)
             
         n_traj += 1
 
@@ -328,6 +340,22 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
 
     return policy_out
 
+def task_selection(task_type):
+    if   task_type == 'goal-train':
+        return 0 # goal training [envType, nan, nan, nan, nan]
+    elif task_type == 'traj-train':
+        return 1 # trajtory training [envType, nan, nan, nan, nan]
+    elif task_type == 'goal-test':
+        return 2 # goal testing [envType, nan, instruction, nan, nan]
+    elif task_type == 'traj-test':
+        return 3 # trajectory testing [envType, mid_instruction, instruction, nan, nan]
+    elif task_type == 'goal-eval':
+        return 4 # goal evaluating [envType, nan, nan, targetX, targetY]
+    elif task_type == 'traj-eval':
+        return 5 # trajtory evaluating [envType, mid_targetX, mid_targetY, targetX, targetY]
+    else:
+        return -1
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--trial', type=int, default=trial_id)
@@ -338,7 +366,7 @@ if __name__ == '__main__':
     parser.add_argument('--nb_tests', type=int, default=100)
     parser.add_argument('--saving_folder', type=str, default=saving_folder)
     parser.add_argument('--traj_folder', type=str, default=traj_folder)
-    parser.add_argument('--task_type', type=str, choices=['goal', 'traj'] ,default='goal')
+    parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
     parser.add_argument('--nb_pt', type=int, default=2)
 
     args = parser.parse_args()
@@ -355,7 +383,6 @@ if __name__ == '__main__':
 
     gep_perf = np.zeros([nb_runs])
 
-    
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
         #gep_perf[i], policies = run_experiment(**args)
@@ -364,6 +391,9 @@ if __name__ == '__main__':
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
    
+   
+    with open(traj_folder + "skill_traj", "wb") as text_file:
+        pickle.dump(traj_dict, text_file)
     
     for key in traj_dict:
         fig = plt.figure()

@@ -29,7 +29,7 @@ class NNController():
         self._dtype = torch.FloatTensor  # run on CPU
         self._weights = None # weights of the NN
 
-    def step(self, policy, obs, nb_pt):
+    def step(self, policy, obs):
         obs_in = np.copy(obs.astype(np.float)).squeeze()
         #print('obs_in:' + str(obs_in))
         policy_in = np.copy(policy).squeeze()
@@ -54,7 +54,7 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([nb_pt]) / self._range) - np.ones([nb_pt])
+            obs_in = ((obs_in - self._min) * 2*np.ones([7]) / self._range) - np.ones([7])
 
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
         y = x.mm(self._weights[0])

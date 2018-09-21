@@ -101,8 +101,8 @@ def kobuki_config(task, nb_pt):
     #    scale = np.array([[-1.0,1.0],[-1.0, 1.0]])
     #    engineer_goal = np.random.uniform(-1.0, 1.0, (2,))
     #else:
-    subset_obs = range(nb_pt)
-    scale = np.array([[-1.0,1.0]]*nb_pt)
+    subset_obs = range(7)
+    scale = np.array([[-1.0,1.0], [-1.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.]])
     engineer_goal = np.random.uniform(-1.0, 1.0, (nb_pt,))
     norm_values = None
     #scale = np.vstack([np.array([[-1.0,1.0],]*2)])

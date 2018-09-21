@@ -70,9 +70,11 @@ class KobukiRepresenter():
         self._representation = None
 
     def represent(self, obs_seq, act_seq, task, nb_pt):
-        nb_pair = int(nb_pt/2)
+        
+        nb_pair = nb_pt//2
         if task == 'traj':
-            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[0]//nb_pair]
+            #print (np.shape( obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))))
+            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[1]//nb_pair]
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
         
         if task == 'traj':
