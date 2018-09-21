@@ -72,7 +72,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('FiveTarget-v1')
+        env = gym.make('FiveTargetEnv-v1')
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -260,7 +260,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     global traj_obs
     task = args.task_type
     nb_pt = args.nb_pt
-    print('Engineer Goal in offline-evalutation: ' + str(engineer_goal))
+    #print('Engineer Goal in offline-evalutation: ' + str(engineer_goal))
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     best_policy = knn.predict(engineer_goal)[0, :]

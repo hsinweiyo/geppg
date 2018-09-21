@@ -36,7 +36,6 @@ class KNNRegressor():
         self._Y = np.copy(Y)
         self._model.fit(X, Y)
 
-
     def predict(self, input_X):
         """
         input_X: goal (representation)
@@ -44,6 +43,7 @@ class KNNRegressor():
         
         in_knn = np.copy(input_X)
         #return self._model.predict(in_knn.reshape(-1, 2))
+        print ('Reshape shape: ' + str (np.shape(in_knn.reshape(1, -1))))
         return self._model.predict(in_knn.reshape(1, -1))
 
 

@@ -32,6 +32,7 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timestep
     rew = np.zeros([nb_rew, nb_timesteps + 1])
     rew.fill(np.nan)
 
+    task = args.task
     rew[:, 0] = 0
     done = False
     plt_obs = [obs] # plot
@@ -115,6 +116,7 @@ if __name__ == '__main__':
     nb_rew      = args.nb_rew
     env_id      = args.env_id
     trial_id    = args.trial_id
+    task        = args.task
     saving_folder = args.saving_folder
     data_path   = (saving_folder + env_id + trial_id + 'save_gep.pk')
     print(data_path)
@@ -130,7 +132,7 @@ if __name__ == '__main__':
 
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
 
-    env = gym.make('FiveTarget-v1')
+    env = gym.make('FiveTargetEnv-v1')
     
     if task == 'goal': task_id = 2
     else: task_id = 3
@@ -139,7 +141,7 @@ if __name__ == '__main__':
         target = np.random.randint(5)
         target_mid = np.random.randint(1) + 5
         env.reset()
-        env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
+        obs = env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
         # target = np.where(obs[2:] == 1)[0][0]
         goal = eval_dist_cem(target)
         if task == 'goal':
@@ -153,7 +155,7 @@ if __name__ == '__main__':
         #print ('Goal evaluated by dist_cem: ' + str(goal))
         #print ('Real target position: x: ' + str(x) + ' y: ' + str(y))
         #print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
-         avg_error.append(np.linalg.norm(last_pos - ideal_pos))
+        avg_error.append(np.linalg.norm(last_pos - ideal_pos))
 
     print('Average error: ' + str (np.array(avg_error).mean()))
     
