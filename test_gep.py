@@ -1,5 +1,6 @@
 import os
 import sys
+import csv
 sys.path.append('./')
 from eval_dist_cem.eval_dist_cem import eval_dist_cem
 import gym
@@ -17,7 +18,7 @@ from gep import *
 
 traj_dict = dict()
 avg_error = []
-def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timesteps, env, controller, eval_perfs):
+def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timesteps, env, controller):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -61,7 +62,6 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timestep
     traj_dict[key] = np.array(plt_obs)
     n_traj += 1
 
-    eval_perfs.append(np.array(returns).mean())
     return obs[:2]
 
 def testing_config():
@@ -102,13 +102,15 @@ def target_position(target, mid_target, task):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--n_neighbors', type=int, help='The number of k in nearest neighbor', default=1)
-    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=500)
+    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=1000)
     parser.add_argument('--nb_rew', type=int, help='The number of reward', default=1)
     parser.add_argument('--env_id', type=str, help='Environment ID', default='Kobuki-v0/')
-    parser.add_argument('--trial_id', type=str, help='Trial ID, ends with 1', default='1/')
+    parser.add_argument('--trial_id', type=str, help='Trial ID, ends with 1', default='0')
     parser.add_argument('--saving_folder', type=str, help='Path of .pk file save', default='./outputs/')
     parser.add_argument('--task', type=str, help='Goal or traj oriented', default='goal')
     parser.add_argument('--nb_pt', type=int, help='Number of points', default=2)
+    parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
+    parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.1')
     args = parser.parse_args()
     
     n_neighbors = args.n_neighbors
@@ -118,7 +120,9 @@ if __name__ == '__main__':
     trial_id    = args.trial_id
     task        = args.task
     saving_folder = args.saving_folder
-    data_path   = (saving_folder + env_id + trial_id + 'save_gep.pk')
+    noise       = args.noise
+    data_path   = (saving_folder + env_id + 'mass-point_exp/' + noise + '_' + trial_id + '_itr.pk')
+    plot = args.save_plot
     print(data_path)
 
     gep_memory = dict()
@@ -126,7 +130,6 @@ if __name__ == '__main__':
         gep_memory = pickle.load(f)
     
     knn = KNNRegressor(n_neighbors)
-    eval_perfs = np.array(gep_memory['eval_perfs']).tolist()
 
     nb_timesteps, controller, representer, knn, = testing_config()
 
@@ -151,25 +154,30 @@ if __name__ == '__main__':
             mid_x, mid_y, x, y = target_position(target, target_mid, task)
             ideal_pos = [mid_x, mid_y, x, y]
 
-        last_pos = run_testing(target, target_mid, goal, knn, obs, nb_rew, nb_timesteps, env, controller, eval_perfs)
+        last_pos = run_testing(target, target_mid, goal, knn, obs, nb_rew, nb_timesteps, env, controller)
         #print ('Goal evaluated by dist_cem: ' + str(goal))
         #print ('Real target position: x: ' + str(x) + ' y: ' + str(y))
         #print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
         avg_error.append(np.linalg.norm(last_pos - ideal_pos))
 
     print('Average error: ' + str (np.array(avg_error).mean()))
+    total_timesteps = int(trial_id) * 200
+    with open('mass-point.csv', 'a', newline='') as f:
+        writer = csv.writer(f, delimiter=' ')
+        writer.writerow([str(total_timesteps), noise, str(n_neighbors), str(np.array(avg_error).mean())])
     
-    for key in traj_dict:
-        fig = plt.figure()
-        plt.axis([-1.0, 1.0, -1.0, 1.0])
-        names = key.split('_')
-        if task == 'goal':
-            target_x, target_y = target_position(names[1], 0, task)
-            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
-        else:
-            mid_x, mid_y, target_x, target_y = target_position(names[1], names[2], task)
-            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
-            plt.plot(mid_x, mid_y, 'bo')
-        fig.savefig('results/'+ key +'.png')
-        plt.show()
-        plt.close()
+    if plot:
+        for key in traj_dict:
+            fig = plt.figure()
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+            names = key.split('_')
+            if task == 'goal':
+                target_x, target_y = target_position(names[1], 0, task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+            else:
+                mid_x, mid_y, target_x, target_y = target_position(names[1], names[2], task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+                plt.plot(mid_x, mid_y, 'bo')
+            fig.savefig('results/'+ key +'.png')
+            plt.show()
+            plt.close()

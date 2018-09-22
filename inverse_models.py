@@ -16,6 +16,7 @@ class KNNRegressor():
         self._prediction = None
         self._X = None
         self._Y = None
+        self._n_neighbors = n_neighbors
 
     def update(self, X, Y):
         """
@@ -43,7 +44,6 @@ class KNNRegressor():
         
         in_knn = np.copy(input_X)
         #return self._model.predict(in_knn.reshape(-1, 2))
-        print ('Reshape shape: ' + str (np.shape(in_knn.reshape(1, -1))))
         return self._model.predict(in_knn.reshape(1, -1))
 
 

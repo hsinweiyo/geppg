@@ -84,7 +84,7 @@ def cmc_config():
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval,  \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
 
-def kobuki_config(task, nb_pt):
+def kobuki_config(task, nb_pt, cus_noise):
     # run parameters
     nb_bootstrap = 300
     nb_explorations = 100
@@ -122,7 +122,7 @@ def kobuki_config(task, nb_pt):
     knn = KNNRegressor(n_neighbors=1)
 
     # exploration_noise
-    noise = 0.1
+    noise = float(cus_noise)
 
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights

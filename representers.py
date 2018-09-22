@@ -20,7 +20,6 @@ class CheetahRepresenter():
         # scale representation to [-1,1]^N
         self._representation = scale_vec(self._representation, self._initial_space)
         self._representation.reshape(1, -1)
-        print(self._representation)
 
         return self._representation
 
@@ -73,7 +72,6 @@ class KobukiRepresenter():
         
         nb_pair = nb_pt//2
         if task == 'traj':
-            #print (np.shape( obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))))
             obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[1]//nb_pair]
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
         

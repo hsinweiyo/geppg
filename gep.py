@@ -2,7 +2,6 @@ import os
 import sys
 sys.path.append('./')
 import numpy as np
-from gym.wrappers.monitoring.video_recorder import VideoRecorder
 import gym
 import custom_gym
 from unity_env import UnityEnv
@@ -42,6 +41,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
     data_path = create_data_path(saving_folder, env_id, trial)
     task = args.task_type
     nb_pt = args.nb_pt
+    cus_noise = args.cus_noise
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # GEP
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -56,20 +56,20 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = cmc_config()
         elif env_id=='Kobuki-v0':
             nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
-            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config(task, nb_pt)
+            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config(task, nb_pt, cus_noise)
 
         # overun some settings
         nb_explorations = nb_exploration
         nb_bootstrap = int(nb_explorations/4)
         nb_tests = args.nb_tests
-        offline_eval = (1e6, 10) #(x,y): y evaluation episodes every x (done offline)
+        offline_eval = (1, 20) #(x,y): y evaluation episodes every x (done offline)
 
         train_perfs = []
         eval_perfs = []
         final_eval_perfs = []
 
         # compute test indices:
-        test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
+        test_ind = range(int(offline_eval[0])-1, nb_explorations+int(offline_eval[1]), int(offline_eval[1]))
 
         # define environment
         env = gym.make('FiveTargetEnv-v1')
@@ -98,9 +98,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
             # offline tests
             if ep in test_ind:
-                print('Engineer Goal:')
-                print(engineer_goal)
-                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
+                file_path = './outputs/Kobuki-v0/mass-point_exp/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                write_file(knn, file_path)
 
         # exploration phase
         # # # # # # # # # # # #
@@ -120,13 +119,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             reward_seqs = np.concatenate([reward_seqs, rew], axis=0)
             train_perfs.append(np.nansum(rew))
            
-            # offline tests
             if ep in test_ind:
-                engineer_goal = np.random.uniform(-1.0, 1.0, (nb_pt,))
-                print('Engineer Goal:')
-                print(engineer_goal)
-                offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env,
-                                    controller, eval_perfs)
+                file_path = './outputs/Kobuki-v0/mass-point_exp/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                write_file(knn, file_path)
 
         # final evaluation phase
         # # # # # # # # # # # # # # #
@@ -165,19 +160,24 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         gep_memory['representations'] = knn._X
         gep_memory['policies'] = knn._Y
         gep_memory['metrics'] = compute_metrics(gep_memory) # compute metrics for buffer analysis
-        #print(gep_memory)
 
         with open(data_path+'save_gep.pk', 'wb') as f:
             pickle.dump(gep_memory, f)
-    
-    # print(pickle.load(open(data_path+'save_gep.pk', 'r')))
 
     return np.array(final_eval_perfs).mean(), knn._Y
+    
+    # print(pickle.load(open(data_path+'save_gep.pk', 'r')))
+def write_file(knn, data_path):
+    gep_memory = dict()
+    gep_memory['representations'] = knn._X
+    gep_memory['policies'] = knn._Y
+
+    with open(data_path, 'wb') as f:
+        pickle.dump(gep_memory, f)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # DDPG
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 
 
 def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, representer, knn):
@@ -223,11 +223,9 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             break
 
     # convert the trajectory into a representation (=behavioral descriptor)
-    # print('Obs seq  shape: ' + str(np.shape(obs)))
     rep = representer.represent(obs[0,:,0:t+1], act, task, nb_pt)
     plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    #print(plt_obs)
     if task == 'goal':
         key = "_".join([str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
     else:
@@ -364,9 +362,11 @@ if __name__ == '__main__':
     parser.add_argument('--study', type=str, default=study) #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=nb_exploration)
     parser.add_argument('--nb_tests', type=int, default=100)
+    parser.add_argument('--cus_noise', type=str, default='0.1')
     parser.add_argument('--saving_folder', type=str, default=saving_folder)
     parser.add_argument('--traj_folder', type=str, default=traj_folder)
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
+    parser.add_argument('--save_plot', type=bool, default=False)
     parser.add_argument('--nb_pt', type=int, default=2)
 
     args = parser.parse_args()
@@ -380,7 +380,8 @@ if __name__ == '__main__':
     traj_folder = args.traj_folder
     task = args.task_type
     nb_pt = args.nb_pt
-
+    save_plot = args.save_plot
+  
     gep_perf = np.zeros([nb_runs])
 
     #pos_dict[0.,0.,0.]
@@ -395,17 +396,18 @@ if __name__ == '__main__':
     with open(traj_folder + "skill_traj", "wb") as text_file:
         pickle.dump(traj_dict, text_file)
     
-    for key in traj_dict:
-        fig = plt.figure()
-        plt.axis([-1.0, 1.0, -1.0, 1.0])
+    if save_plot:
+        for key in traj_dict:
+            fig = plt.figure()
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
         
-        x_z = key.split('_')
+            x_z = key.split('_')
 
-        if task == 'goal':
-            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
-        else:
-            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
-            plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
-            plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
-        fig.savefig('figures/'+ key +'.png')
-        plt.close()
+            if task == 'goal':
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+            else:
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+                plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+            fig.savefig('figures/'+ key +'.png')
+            plt.close()
