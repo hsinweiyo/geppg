@@ -9,29 +9,16 @@ import matplotlib.pyplot as plt
 import pickle
 import argparse
 import random
-from DDPG_baseline_v2.baselines.ddpg.main_config import run_ddpg
-from DDPG_baseline_v2.baselines.ddpg.configs.config import ddpg_config
 from controllers import NNController
 from representers import CheetahRepresenter
 from inverse_models import KNNRegressor
 from gep_utils import *
 from configs import *
 
-
-saving_folder = './results/'
-traj_folder = './trajectory/'
-trial_id = 1
-nb_runs = 1
-env_id = 'Kobuki-v0' #'HalfCheetah-v2'# #'MountainCarContinuous-v0' #
-study = 'DDPG' # 'GEP' # 'GEPPG' #
-ddpg_noise = 'ou_0.3'# 'adaptive_param_0.2' #
-nb_exploration = 500 # nb of episodes for gep exploration
 traj_dict = dict()
 obj_dict = dict()
 n_traj = 0
 sample_obs = []
-task_type = 'goal'
-nb_pt = 2
 traj_obs = []
 
 def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder):
@@ -62,7 +49,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         nb_explorations = nb_exploration
         nb_bootstrap = int(nb_explorations/4)
         nb_tests = args.nb_tests
-        offline_eval = (1, 20) #(x,y): y evaluation episodes every x (done offline)
+        offline_eval = (1e6, 20) #(x,y): y evaluation episodes every x (done offline)
 
         train_perfs = []
         eval_perfs = []
@@ -159,7 +146,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         gep_memory['final_eval_perfs'] = np.array(final_eval_perfs)
         gep_memory['representations'] = knn._X
         gep_memory['policies'] = knn._Y
-        gep_memory['metrics'] = compute_metrics(gep_memory) # compute metrics for buffer analysis
+        #gep_memory['metrics'] = compute_metrics(gep_memory) # compute metrics for buffer analysis
 
         with open(data_path+'save_gep.pk', 'wb') as f:
             pickle.dump(gep_memory, f)
@@ -185,6 +172,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     Play a policy in the environment for a given number of timesteps, usin a NN controller.
     Then represent the trajectory and update the inverse model.
     """
+    global n_traj
     task = args.task_type
     obs = np.zeros([1, nb_obs, nb_timesteps + 1])
     act = np.zeros([1, nb_act, nb_timesteps])
@@ -223,29 +211,23 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             break
 
     # convert the trajectory into a representation (=behavioral descriptor)
-    rep = representer.represent(obs[0,:,0:t+1], act, task, nb_pt)
+    rep, flag = representer.represent(obs[0,:,0:t+1], act, task, nb_pt)
     plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
     if task == 'goal':
         key = "_".join([str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
     else:
         key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
-    #traj_dict[key] = np.array(plt_obs)
+    traj_dict[key] = np.array(plt_obs)
+    #print('saving' + str(n_traj))
     #print('Representatio: ' + str(rep))
     #print('obs: ' + str(obs[0, :, env_timestep]))
 
-    '''if max_timestep == True:
-        rep = np.array([0.0, 0.0])
-        #print('Representation w/ Max:' + str(rep))
-        #print('obs: ' + str(obs[0, :, -1]))
-    else:
-        rep = representer.represent(obs, act)
-        print('Representation w/o Max:' + str(rep))
-        print('obs: ' + str(obs[0, :, env_timestep]))'''
-
     # update inverse model
-    # print('Representation in play-policy: ' + str (rep))
-    knn.update(X=rep, Y=policy)
+    #print('Representation in play-policy: ' + str (rep))
+    if flag:
+        policy = np.array([policy] * rep.shape[0])
+        knn.update(X=rep, Y=policy)
 
     return obs, act, rew
 
@@ -308,7 +290,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             #key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
         
-        traj_dict[key] = np.array(plt_obs)
+        #traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
         # with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
@@ -338,33 +320,17 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
 
     return policy_out
 
-def task_selection(task_type):
-    if   task_type == 'goal-train':
-        return 0 # goal training [envType, nan, nan, nan, nan]
-    elif task_type == 'traj-train':
-        return 1 # trajtory training [envType, nan, nan, nan, nan]
-    elif task_type == 'goal-test':
-        return 2 # goal testing [envType, nan, instruction, nan, nan]
-    elif task_type == 'traj-test':
-        return 3 # trajectory testing [envType, mid_instruction, instruction, nan, nan]
-    elif task_type == 'goal-eval':
-        return 4 # goal evaluating [envType, nan, nan, targetX, targetY]
-    elif task_type == 'traj-eval':
-        return 5 # trajtory evaluating [envType, mid_targetX, mid_targetY, targetX, targetY]
-    else:
-        return -1
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--trial', type=int, default=trial_id)
+    parser.add_argument('--trial', type=int, default=1)
     parser.add_argument('--env_id', type=str, default='Kobuki-v0')
-    parser.add_argument('--noise_type', type=str, default=ddpg_noise)  # choices are adaptive-param_xx, ou_xx, normal_xx, decreasing-ou_xx, none
-    parser.add_argument('--study', type=str, default=study) #'DDPG'  #'GEP_PG'
-    parser.add_argument('--nb_exploration', type=int, default=nb_exploration)
+    parser.add_argument('--noise_type', type=str, default='ou_0.3')  # choices are adaptive-param_xx, ou_xx, normal_xx, decreasing-ou_xx, none
+    parser.add_argument('--study', type=str, default='GEP') #'DDPG'  #'GEP_PG'
+    parser.add_argument('--nb_exploration', type=int, default=1000)
     parser.add_argument('--nb_tests', type=int, default=100)
     parser.add_argument('--cus_noise', type=str, default='0.1')
-    parser.add_argument('--saving_folder', type=str, default=saving_folder)
-    parser.add_argument('--traj_folder', type=str, default=traj_folder)
+    parser.add_argument('--saving_folder', type=str, default='./outputs/')
+    parser.add_argument('--traj_folder', type=str, default='./trajectory/')
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
     parser.add_argument('--save_plot', type=bool, default=False)
     parser.add_argument('--nb_pt', type=int, default=2)
@@ -382,6 +348,7 @@ if __name__ == '__main__':
     nb_pt = args.nb_pt
     save_plot = args.save_plot
   
+    nb_runs = 1 
     gep_perf = np.zeros([nb_runs])
 
     #pos_dict[0.,0.,0.]
@@ -393,8 +360,12 @@ if __name__ == '__main__':
         #replay_save_video(env_id, policies, video_folder)
    
    
+    for key in traj_dict:
+        save_traj = traj_dict[key][:,:2]
+        obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
+
     with open(traj_folder + "skill_traj", "wb") as text_file:
-        pickle.dump(traj_dict, text_file)
+        pickle.dump(obj_dict, text_file)
     
     if save_plot:
         for key in traj_dict:

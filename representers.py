@@ -71,21 +71,50 @@ class KobukiRepresenter():
     def represent(self, obs_seq, act_seq, task, nb_pt):
         
         nb_pair = nb_pt//2
+        update_flag = True
+        #print('Obs seq in representer: ' + str(obs_seq))
+        #print('Obs seq shape: ' + str(np.shape(obs_seq)))
+        time_steps = max(1, int(obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1)).shape[1] - 1))
+        #print('real time step: ' + str(time_steps))
+        obs_seq_mid = np.array(obs_seq[:,:time_steps])
+        #print('Obs mid seq shape: ' + str(np.shape(obs_seq_mid)))
         if task == 'traj':
-            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[1]//nb_pair]
+            for i in range(1, time_steps):
+                #print(obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, i])
+                obs_seq_mid[:,i] = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, i]
+                
+            #obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[1]//nb_pair]
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
+        obs_seq_mid = obs_seq_mid.reshape(7,-1)
+        testing = obs_seq_mid.T
+        if (testing == testing[0]).all():
+            update_flag = False
+        #print('Obs seq after reshape: ' + str(np.shape(obs_seq)))
+        #print('Obs mid seq shape after process: ' + str(np.shape(obs_seq_mid)))
+            #print('Obs mid seq after process: ' + str(obs_seq_mid.T[:,:2]))
         
         if task == 'traj':
-            self._representation = np.concatenate([obs_seq_mid[:2], obs_seq[:2]])
+            #print(np.concatenate([obs_seq_mid[:,:2], np.array([obs_seq[:2]]*time_steps)], axis=1))
+            #print(np.shape(np.array([obs_seq[:2]]*time_steps)))
+            #print(np.shape(obs_seq_mid.T[:,:2]))
+            #print('Timesteps: ' + str(time_steps))
+            #print('Shape of obs * time: ' + str(np.shape(np.array([obs_seq[:2]]*time_steps))))
+            #print('Transposing obs_mid ' + str(obs_seq_mid[:2,:]))
+
+            self._representation = np.hstack([obs_seq_mid.T[:,:2], np.array([obs_seq[:2]]*time_steps)])
+            #print ('Representation in traj representer: ' + str(np.shape(self._representation)))
+            #print ('Representation in traj representer: ' + str(self._representation))
+            for i in range(time_steps):
+                self._representation[i,:] = scale_vec(self._representation[i,:], self._initial_space)
+                #self._representation.reshape(i, -1)
         else:
             self._representation = np.array(obs_seq[:2])
+            # scale representation to [-1,1]^N
+            self._representation = scale_vec(self._representation, self._initial_space)
+            self._representation.reshape(1, -1)
         
-        # scale representation to [-1,1]^N
         
-        self._representation = scale_vec(self._representation, self._initial_space)
-        
-        self._representation.reshape(1, -1)
-        return self._representation
+        return self._representation, update_flag
 
     @property
     def initial_space(self):
