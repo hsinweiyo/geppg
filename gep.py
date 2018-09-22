@@ -30,15 +30,14 @@ nb_exploration = 500 # nb of episodes for gep exploration
 traj_dict = dict()
 obj_dict = dict()
 n_traj = 0
-Avg_error_x = 0
-Avg_error_y = 0
 gep_error = []
-visited_goal = []
 
 def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder):
 
     # create data path
     data_path = create_data_path(saving_folder, env_id, trial_id)
+    task = args.task_type
+    nb_pt = args.nb_pt
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # GEP
@@ -54,12 +53,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = cmc_config()
         elif env_id=='Kobuki-v0':
             nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
-            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config()
+            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config(task, nb_pt)
 
         
         # overun some settings
         nb_explorations = nb_exploration
-        #nb_tests = 100
+        nb_bootstrap = nb_explorations//4
+        nb_tests = args.nb_tests
         offline_eval = (1e6, 10) #(x,y): y evaluation episodes every x (done offline)
 
         train_perfs = []
@@ -71,7 +71,11 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         test_ind = range(int(offline_eval[0])-1, nb_explorations, int(offline_eval[0]))
 
         # define environment
-        env = gym.make('ReacherGEPTraj-v0')
+        if task == 'goal':
+            env = gym.make('ReacherGEP-v0')
+        else: 
+            env = gym.make('ReacherGEPTraj-v0')
+        
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
         nb_rew = 1
@@ -125,7 +129,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
            
             # offline tests
             if ep in test_ind:
-                while True:
+                '''while True:
                     xpos = np.random.sample() * 2 - 1
                     ypos = np.random.sample() * 2 - 1
                     if np.linalg.norm([xpos*0.21, ypos*0.21]) <= 0.21:
@@ -135,30 +139,23 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
                     mypos = np.random.sample() * 2 - 1
                     if np.linalg.norm([mxpos*0.21, mypos*0.21]) <= 0.21:
                         break
-                engineer_goal = np.array([mxpos, mypos, xpos, ypos])
+                if task == 'goal':
+                else:
+                    engineer_goal = np.array([mxpos, mypos, xpos, ypos])
+                '''
                 offline_evaluations(offline_eval[1], engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs)
 
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
-            while True:
-                xpos = np.random.sample() * 2 - 1
-                ypos = np.random.sample() * 2 - 1
-                if np.linalg.norm([xpos*0.21, ypos*0.21]) <= 0.21:
-                    break
-            while True:
-                mxpos = np.random.sample() * 2 - 1
-                mypos = np.random.sample() * 2 - 1
-                if np.linalg.norm([mxpos*0.21, mypos*0.21]) <= 0.21:
-                    break
-            engineer_goal = np.array([mxpos, mypos, xpos, ypos])
-            #if ep == 0:
-            #    print('vgoal:', visited_goal)
-            #    engineer_goal = visited_goal
-            #print('Test episode #', ep+1)
-            #print('Engineer Goal:')
-            #print(engineer_goal)
-            #print('nb_test:', nb_tests)
+            theta = np.random.sample() * 360
+            rad = np.random.sample()
+            if task == 'goal':
+                engineer_goal = np.array([np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
+            else:
+                m_theta = np.random.sample() * 360
+                m_rad = np.random.sample()
+                engineer_goal = np.array([np.cos(np.deg2rad(m_theta)) * m_rad, np.sin(np.deg2rad(m_theta)) * m_rad, np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
             best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
 
         #print('Observation:')
@@ -213,9 +210,10 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     rew[0, :, 0] = 0
     done = False  # termination signal
     env_timestep = 0
+    task = args.task_type
+    nb_pt = args.nb_pt
 
     global n_traj
-    global visited_goal
     #env.render()
     # Check Observation Range
     for t in range(nb_timesteps):
@@ -237,12 +235,15 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             break
     # convert the trajectory into a representation (=behavioral descriptor)
     #env.close()
-    rep = representer.represent(obs[0,:,0:env_timestep], act)
+    rep = representer.represent(obs[0,:,0:env_timestep], act, task, nb_pt)
     #x, y = obs[:,0,:] + obs[:,1,:], obs[:,2,:] + obs[:,3,:]
     x, y = obs[:,0,:], obs[:,1,:]
-    plt_obs = np.reshape(np.array([x,y]), (2,nb_timesteps+1))
+    plt_obs = np.reshape(np.array([x,y]), (2, nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
+    if task == 'goal':
+        key = "_".join([str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
+    else:
+        key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
     #print('env_timestep-1:' + str(plt_obs[env_timestep-1]))
     #print('env_timestep:' + str(plt_obs[env_timestep]))
     #traj_dict[key] = np.array(plt_obs)
@@ -261,11 +262,6 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     #print ('knn._X: '+str(knn._X))
     knn.update(X=rep, Y=policy)
     
-    #if n_traj <= 100:
-    #    visited_goal = rep
-    #    print('vgoal:', visited_goal)
-    #    n_traj += 1
-
     return obs, act, rew
 
 def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs):
@@ -278,6 +274,8 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     best_policy = knn.predict(engineer_goal)[0, :]
+    task = args.task_type
+    nb_pt = args.nb_pt
     #print('best_policy', best_policy)
 
     returns = []
@@ -313,14 +311,11 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         
         #env.close()
         returns.append(np.nansum(rew))
-        #target = np.where(np.array(obs[2:] == engineer_goal))
 
-        #error_x, error_y = x - engineer_goal[0], y - engineer_goal[1]
-        #gep_error.append(np.array([error_x,error_y]))
-        # print('Error: ' + str(gep_error))
-        #print('Plt_obs: ' + str(plt_obs))
-        # print('Size of plt_obs: ' + str(np.shape(plt_obs)))
-        key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj)])
+        if task == 'goal':
+            key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
+        else:
+            key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj)])
         #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
         traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
@@ -355,21 +350,32 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--trial', type=int, default=trial_id)
-    parser.add_argument('--env_id', type=str, default=env_id)
+    parser.add_argument('--env_id', type=str, default='Kobuki-v0')
     parser.add_argument('--noise_type', type=str, default=ddpg_noise)  # choices are adaptive-param_xx, ou_xx, normal_xx, decreasing-ou_xx, none
     parser.add_argument('--study', type=str, default=study) #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=nb_exploration)
+    parser.add_argument('--nb_tests', type=int, default=100)
     parser.add_argument('--saving_folder', type=str, default=saving_folder)
     parser.add_argument('--traj_folder', type=str, default=traj_folder)
-    #parser.add_argument('--video_folder', type=str, default=video_folder)
-    args = vars(parser.parse_args())
+    parser.add_argument('--task_type', type=str, choices=['goal', 'traj'], default='goal')
+    parser.add_argument('--nb_pt', type=int, default=2)
+    args = parser.parse_args()
 
     gep_perf = np.zeros([nb_runs])
-    
+
+    trial_id = args.trial
+    env_id = args.env_id
+    noise_type = args.noise_type
+    study = args.study
+    nb_exploration = args.nb_exploration
+    saving_folder = args.saving_folder
+    traj_folder = args.traj_folder
+    task = args.task_type
+    nb_pt = args.nb_pt
 
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
-        gep_perf[i], policies = run_experiment(**args)
+        gep_perf[i], policies = run_experiment(env_id, trial_id, noise_type, study, nb_exploration, saving_folder, traj_folder)
         print(gep_perf)
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
@@ -382,9 +388,11 @@ if __name__ == '__main__':
         fig = plt.figure()
         plt.axis([-1, 1, -1, 1])
         x_z = key.split('_')
-        # if (int(x_z[2]) > 2000):
-        plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'bo')
-        plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+        if task == 'goal':
+            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+        else:
+            plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'bo')
+            plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
         #print(x_z[2])
         #plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
         fig.savefig('figures/'+key + '.png')

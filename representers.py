@@ -64,25 +64,29 @@ class CMCRepresenter():
 
 class KobukiRepresenter():
   
-    def __init__(self):
+    def __init__(self, nb_pt):
         self._description = ['engineer_goal_x', 'engineer_goal_y']
-        self._initial_space = np.array([[-1.0, 1.0]]*4) # space in which goal are sampled
+        self._initial_space = np.array([[-1.0, 1.0]]*nb_pt) # space in which goal are sampled
         self._representation = None
 
-    def represent(self, obs_seq, act_seq):
+    def represent(self, obs_seq, act_seq, task, nb_pt):
+        nb_pair = nb_pt//2
         #print('obs', obs_seq)
         #print('obsshape0', obs_seq.shape[0])
         #print('obsshape1', obs_seq.shape[1])
-        obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, obs_seq.shape[1]//2]
+        if task == 'traj':
+            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, obs_seq.shape[1]//nb_pair]
+            mx, my = obs_seq_mid[0], obs_seq_mid[1]
         #print('obsm_shape0', obs_seq_mid.shape[0])
         #print('obsm_shape1', obs_seq_mid.shape[1])
         #print('obs_mid', obs_seq_mid)
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, -1]
-        #print('obs_seq', obs_seq)
-        
-        mx, my = obs_seq_mid[0], obs_seq_mid[1]
         x, y = obs_seq[0], obs_seq[1]
-        self._representation = np.array([mx, my, x, y])
+        #print('obs_seq', obs_seq)
+        if task == 'traj': 
+            self._representation = np.array([mx, my, x, y])
+        else:
+            self._representation = np.array([x, y])
         #print('Representation')
         #print(self._representation )
         

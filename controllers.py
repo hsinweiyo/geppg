@@ -44,7 +44,7 @@ class NNController():
                 policy_in[ind_weights].reshape([self._layer_sizes[i], self._layer_sizes[i + 1]])).type(self._dtype))
 
         # (paulolbear) lower the last weight
-        #self._weights[-1] *= 0.1
+        self._weights[-1] *= 0.1
         # take only a subset of observation as input to the NN
         if self._subset_obs is not None:
             obs_in = obs_in[self._subset_obs]

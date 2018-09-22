@@ -30,6 +30,11 @@ class KNNRegressor():
             self._Y = np.concatenate([self._Y, Y.reshape(1, -1)], axis=0)
 
         self._model.fit(self._X, self._Y)
+    
+    def init_update (self, X, Y):
+        self._X = np.copy(X)
+        self._Y = np.copy(Y)
+        self._model.fit(X, Y)
 
     def predict(self, input_X):
         """
