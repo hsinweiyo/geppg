@@ -86,9 +86,6 @@ class KobukiRepresenter():
             #obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, obs_seq.shape[1]//nb_pair]
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((7, -1))[:, -1]
         obs_seq_mid = obs_seq_mid.reshape(7,-1)
-        testing = obs_seq_mid.T
-        if (testing == testing[0]).all():
-            update_flag = False
         #print('Obs seq after reshape: ' + str(np.shape(obs_seq)))
         #print('Obs mid seq shape after process: ' + str(np.shape(obs_seq_mid)))
             #print('Obs mid seq after process: ' + str(obs_seq_mid.T[:,:2]))
@@ -100,6 +97,9 @@ class KobukiRepresenter():
             #print('Timesteps: ' + str(time_steps))
             #print('Shape of obs * time: ' + str(np.shape(np.array([obs_seq[:2]]*time_steps))))
             #print('Transposing obs_mid ' + str(obs_seq_mid[:2,:]))
+            testing = obs_seq_mid.T
+            if (testing == testing[0]).all():
+                update_flag = False
 
             self._representation = np.hstack([obs_seq_mid.T[:,:2], np.array([obs_seq[:2]]*time_steps)])
             #print ('Representation in traj representer: ' + str(np.shape(self._representation)))

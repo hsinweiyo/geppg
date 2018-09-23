@@ -218,16 +218,19 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         key = "_".join([str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
     else:
         key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
-    traj_dict[key] = np.array(plt_obs)
+    #traj_dict[key] = np.array(plt_obs)
     #print('saving' + str(n_traj))
     #print('Representatio: ' + str(rep))
     #print('obs: ' + str(obs[0, :, env_timestep]))
 
     # update inverse model
-    #print('Representation in play-policy: ' + str (rep))
-    if flag:
-        policy = np.array([policy] * rep.shape[0])
-        knn.update(X=rep, Y=policy)
+    # print('Representation in play-policy: ' + str (rep))
+    if task == 'traj':
+        if flag:
+            policy = np.array([policy] * rep.shape[0])
+            knn.update(X=rep, Y=policy)
+    else:
+        knn.goal_update(X=rep, Y=policy)
 
     return obs, act, rew
 
@@ -290,7 +293,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             #key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
         
-        #traj_dict[key] = np.array(plt_obs)
+        traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
         # with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
