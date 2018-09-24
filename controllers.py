@@ -18,6 +18,7 @@ class NNController():
             self._range = self._scale[:, 1] - self._min
 
         self._layer_sizes = [len(self._subset_obs)] + hidden_sizes + [nb_act]
+        print('nbact', nb_act)
         # print ('Len of layer sizes\n')
         # print (self._layer_sizes)
         # compute number of parameters

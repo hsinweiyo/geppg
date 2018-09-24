@@ -34,6 +34,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     if 'GEP' in study:
+
+        # define environment
+        env = gym.make('FiveTargetEnv-v1')
+        nb_act = env.action_space.shape[0]
+        nb_obs = env.observation_space.shape[0]
+        nb_rew = 1
+
         # get GEP config
         if env_id=='HalfCheetah-v2':
             nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer,\
@@ -43,7 +50,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = cmc_config()
         elif env_id=='Kobuki-v0':
             nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
-            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config(task, nb_pt, cus_noise)
+            nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = kobuki_config(task, nb_pt, cus_noise, nb_act)
 
         # overun some settings
         nb_explorations = nb_exploration
@@ -58,11 +65,6 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # compute test indices:
         test_ind = range(int(offline_eval[0])-1, nb_explorations+int(offline_eval[1]), int(offline_eval[1]))
 
-        # define environment
-        env = gym.make('FiveTargetEnv-v1')
-        nb_act = env.action_space.shape[0]
-        nb_obs = env.observation_space.shape[0]
-        nb_rew = 1
         action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
         observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
         reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
@@ -70,6 +72,12 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # bootstrap phase
         # # # # # # # # # # #
         for ep in range(nb_bootstrap):
+            # for random max timepsteps
+            nb_timesteps = np.random.randint(10, 51)
+            action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
+            observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
+            reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
+
             print('Bootstrap episode #', ep+1)
             # sample policy at random
             policy = np.random.random(nb_weights) * 2 - 1
@@ -91,6 +99,12 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # exploration phase
         # # # # # # # # # # # #
         for ep in range(nb_bootstrap, nb_explorations):
+            # for random max timepsteps
+            nb_timesteps = np.random.randint(10, 51)
+            action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
+            observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
+            reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
+
             print('Random Goal episode #', ep+1)
 
             # random goal strategy
@@ -99,27 +113,40 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             # play policy and update knn
             obs, act, rew = play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller,
                                         representer, knn)
-                                        
+            
             #save
             action_seqs = np.concatenate([action_seqs, act], axis=0)
             observation_seqs = np.concatenate([observation_seqs, obs], axis=0)
             reward_seqs = np.concatenate([reward_seqs, rew], axis=0)
             train_perfs.append(np.nansum(rew))
-           
+            
             if ep in test_ind:
                 file_path = './outputs/Kobuki-v0/mass-point_exp/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
 
+        # for random max timepsteps
+        nb_timesteps = 50
+        action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
+        observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
+        reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
+            target_coord = range(18, 180, 36)
+            target_coord = [np.deg2rad(x) for x in target_coord]
+            target_coord = [(np.cos(x), np.sin(x)) for x in target_coord]
+            mid_targets = [0, 180]
+            mid_targets = [np.deg2rad(x) for x in mid_targets]
+            mid_targets = [(np.cos(x) * 0.25, np.sin(x) * 0.25) for x in mid_targets]
             #engineer_goal[0] = np.random.uniform(-.5, .5)
             #engineer_goal[1] = np.random.uniform(-.5, 0)
             if task == 'goal':
                 engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
             elif task == 'traj':
-                engineer_goal[:2] = [np.random.uniform(-.5, .5),np.random.uniform(-.5, 0)] 
-                engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+                #engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
+                #engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+                engineer_goal[:2] = mid_targets[ep%2]
+                engineer_goal[2:4] = target_coord[ep%5]
             else:
                 print('Error of task type')
             #print('Test episode #', ep+1)
@@ -182,9 +209,9 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     rew.fill(np.nan)
     env.reset()
     if task == 'goal':
-        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([0], np.zeros(4))))
+        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([0], np.zeros(4))), nb_timesteps)
     else:
-        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([1], np.zeros(4))))
+        obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([1], np.zeros(4))), nb_timesteps)
         
     rew[0, :, 0] = 0
     done = False  # termination signal
@@ -261,7 +288,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         else:
             configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
             #print('Task id:' + str(configs))
-        obs = env.unwrapped.reset(configs) 
+        obs = env.unwrapped.reset(configs, nb_timesteps) 
         rew[:, 0] = 0
         done = False
         info = {}
@@ -300,6 +327,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
              #pickle.dump(plt_obs, text_file)
             
         n_traj += 1
+        print('total time:', plt_timestep)
 
     eval_perfs.append(np.array(returns).mean())
 
@@ -331,7 +359,7 @@ if __name__ == '__main__':
     parser.add_argument('--study', type=str, default='GEP') #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=1000)
     parser.add_argument('--nb_tests', type=int, default=100)
-    parser.add_argument('--cus_noise', type=str, default='0.1')
+    parser.add_argument('--cus_noise', type=str, default='0.05')
     parser.add_argument('--saving_folder', type=str, default='./outputs/')
     parser.add_argument('--traj_folder', type=str, default='./trajectory/')
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
