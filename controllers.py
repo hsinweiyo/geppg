@@ -37,6 +37,7 @@ class NNController():
         # format weights
         self._weights = []
         index = 0
+        
         for i in range(len(self._layer_sizes) - 1):
             ind_weights = np.arange(index, index + self._layer_sizes[i] * self._layer_sizes[i + 1])
             index = index + (self._layer_sizes[i]) * self._layer_sizes[i + 1]

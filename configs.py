@@ -85,7 +85,7 @@ def cmc_config():
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval,  \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
 
-def kobuki_config(task, nb_pt):
+def kobuki_config(task, nb_pt, cus_noise, nb_act):
     # run parameters
     nb_bootstrap = 100
     nb_explorations = 100
@@ -102,7 +102,7 @@ def kobuki_config(task, nb_pt):
     norm_values = None
     #scale = np.vstack([np.array([[-1.0,1.0],]*2)])
     scale = np.array([[-1.0, 1.0], [-1.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
-    controller = NNController(hidden_sizes, controller_tmp, subset_obs, 2, norm_values, scale, activation)
+    controller = NNController(hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation)
     nb_weights = controller.nb_weights
 
     # representer
@@ -119,7 +119,7 @@ def kobuki_config(task, nb_pt):
     knn = KNNRegressor(n_neighbors=1)
 
     # exploration_noise
-    noise = 0.5
+    noise = float(cus_noise)
 
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights

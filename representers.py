@@ -71,33 +71,49 @@ class KobukiRepresenter():
 
     def represent(self, obs_seq, act_seq, task, nb_pt):
         nb_pair = nb_pt//2
+        update_flag = True
         #print('obs', obs_seq)
         #print('obsshape0', obs_seq.shape[0])
         #print('obsshape1', obs_seq.shape[1])
+        time_steps = max(1, int(obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1)).shape[1]-1))
+        obs_seq_mid = np.array(obs_seq[:,:time_steps])
         if task == 'traj':
-            obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, obs_seq.shape[1]//nb_pair]
-            mx, my = obs_seq_mid[0], obs_seq_mid[1]
+            for i in range(1, time_steps):
+                obs_seq_mid[:,i] = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, i]
+            #obs_seq_mid = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, obs_seq.shape[1]//nb_pair]
+            #mx, my = obs_seq_mid[0], obs_seq_mid[1]
         #print('obsm_shape0', obs_seq_mid.shape[0])
         #print('obsm_shape1', obs_seq_mid.shape[1])
         #print('obs_mid', obs_seq_mid)
         obs_seq = obs_seq[~np.isnan(np.array(obs_seq))].reshape((4, -1))[:, -1]
-        x, y = obs_seq[0], obs_seq[1]
+        obs_seq_mid = obs_seq_mid.reshape(4, -1)
+        #x, y = obs_seq[0], obs_seq[1]
         #print('obs_seq', obs_seq)
         if task == 'traj': 
-            self._representation = np.array([mx, my, x, y])
+            testing = obs_seq_mid.T
+            if (testing == testing[0]).all():
+                update_flag = False
+
+            self._representation = np.hstack([obs_seq_mid.T[:,:2], np.array([obs_seq[:2]]*time_steps)])
+            for i in range(time_steps):
+                self._representation[i,:] = scale_vec(self._representation[i,:], self._initial_space)
+            # self._representation = np.array([mx, my, x, y])
         else:
-            self._representation = np.array([x, y])
+            # self._representation = np.array([x, y])
+            self._representation = np.array(obs_seq[:2])
+            self._representation = scale_vec(self._representation, self._initial_space)
+            self._representation.reshape(1, -1)
         #print('Representation')
         #print(self._representation )
         
         # scale representation to [-1,1]^N
         
-        self._representation = scale_vec(self._representation, self._initial_space)
+        # self._representation = scale_vec(self._representation, self._initial_space)
         #print('After scale Representation')
         #print(self._representation)
         
-        self._representation.reshape(1, -1)
-        return self._representation
+        # self._representation.reshape(1, -1)
+        return self._representation, update_flag
 
     @property
     def initial_space(self):

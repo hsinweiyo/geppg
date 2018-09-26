@@ -22,6 +22,25 @@ class KNNRegressor():
         X: representation
         Y: policy
         """
+        time_steps = X.shape[0]
+        #print ('In knn X shape: ' + str (np.shape(X)))
+        #print ('In knn Y shape: ' + str (np.shape(Y)))
+        if self._X is None:
+            #self._X = np.copy(X).reshape(1,-1)
+            #self._Y = np.copy(Y).reshape(1,-1)
+            self._X = np.copy(X).reshape(time_steps, -1)
+            self._Y = np.copy(Y).reshape(time_steps, -1)
+        else:
+            #self._X = np.concatenate([self._X, X.reshape(1, -1)], axis=0)
+            #self._Y = np.concatenate([self._Y, Y.reshape(1, -1)], axis=0)
+            self._X = np.concatenate([self._X, X.reshape(time_steps, -1)], axis=0)
+            self._Y = np.concatenate([self._Y, Y.reshape(time_steps, -1)], axis=0)
+
+        self._model.fit(self._X, self._Y)
+    
+    def goal_update(self, X, Y):
+        #print ('In knn X shape: ' + str (np.shape(X)))
+        #print ('In knn Y shape: ' + str (np.shape(Y)))
         if self._X is None:
             self._X = np.copy(X).reshape(1,-1)
             self._Y = np.copy(Y).reshape(1,-1)
