@@ -9,7 +9,7 @@ import pickle
 import argparse
 import random
 from controllers import NNController
-from representers import CheetahRepresenter
+from representers import KobukiRepresenter
 from inverse_models import KNNRegressor
 from gep_utils import *
 from configs import *

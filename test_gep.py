@@ -6,17 +6,19 @@ sys.path.append('./')
 from eval_traj.eval_traj import eval_traj
 import gym
 import custom_gym
+import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 import argparse
 from controllers import NNController
-from representers import CheetahRepresenter
+from representers import KobukiRepresenter
 from inverse_models import KNNRegressor
 from gep_utils import *
 from configs import *
 from gep import *
 
 traj_dict = dict()
+n_traj = 0
 avg_error = []
 def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timesteps, env, controller):
     """
@@ -156,7 +158,7 @@ if __name__ == '__main__':
     
     knn = KNNRegressor(n_neighbors)
 
-    nb_timesteps, controller, representer, knn, = testing_config()
+    nb_timesteps, controller, representer, knn = testing_config()
 
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
 
@@ -211,6 +213,8 @@ if __name__ == '__main__':
                 plt.plot(mid_x, mid_y, 'bo')
                 plt.plot(names[3], names[4], 'go')
                 plt.plot(names[5], names[6], 'yo')
-            fig.savefig('results/'+ key +'.png')
+            # Paulolbear
+            #fig.savefig('results/'+ key +'.png')
+            fig.savefig('results02/'+ key +'.png')
             #plt.show()
             plt.close()

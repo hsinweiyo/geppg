@@ -48,7 +48,7 @@ class KNNRegressor():
     def init_update(self, X, Y):
         self._X = np.copy(X)
         self._Y = np.copy(Y)
-        self._model.fit(X, Y)
+        self._model.fit(self._X, self._Y)
     
     def predict(self, input_X):
         """
