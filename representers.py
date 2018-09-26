@@ -106,6 +106,7 @@ class KobukiRepresenter():
             #print ('Representation in traj representer: ' + str(self._representation))
             for i in range(time_steps):
                 self._representation[i,:] = scale_vec(self._representation[i,:], self._initial_space)
+                #print('representation', self._representation[i,:])
                 #self._representation.reshape(i, -1)
         else:
             self._representation = np.array(obs_seq[:2])

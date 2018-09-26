@@ -4,7 +4,6 @@ sys.path.append('./')
 import numpy as np
 import gym
 import custom_gym
-from unity_env import UnityEnv
 import matplotlib.pyplot as plt
 import pickle
 import argparse
@@ -56,7 +55,10 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         nb_explorations = nb_exploration
         nb_bootstrap = int(nb_explorations/4)
         nb_tests = args.nb_tests
-        offline_eval = (1e6, 20) #(x,y): y evaluation episodes every x (done offline)
+        if args.save_pickle:
+            offline_eval = (10000, 20) #(x,y): y evaluation episodes every x (done offline)
+        else:
+            offline_eval = (1e6, 20)
 
         train_perfs = []
         eval_perfs = []
@@ -93,7 +95,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
             # offline tests
             if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point_exp/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                file_path = './outputs/Kobuki-v0/mass-point-traj-092702/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
 
         # exploration phase
@@ -121,7 +123,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             train_perfs.append(np.nansum(rew))
             
             if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point_exp/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                file_path = './outputs/Kobuki-v0/mass-point-traj-092702/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
 
         # for random max timepsteps
@@ -143,10 +145,10 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             if task == 'goal':
                 engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
             elif task == 'traj':
-                #engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
-                #engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
-                engineer_goal[:2] = mid_targets[ep%2]
-                engineer_goal[2:4] = target_coord[ep%5]
+                engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
+                engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+                #engineer_goal[:2] = mid_targets[ep%2]
+                #engineer_goal[2:4] = target_coord[ep%5]
             else:
                 print('Error of task type')
             #print('Test episode #', ep+1)
@@ -241,11 +243,15 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     rep, flag = representer.represent(obs[0,:,0:t+1], act, task, nb_pt)
     plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    if task == 'goal':
+    '''if task == 'goal':
         key = "_".join([str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
+        traj_dict[key] = np.array(plt_obs)
     else:
-        key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
-    #traj_dict[key] = np.array(plt_obs)
+        #key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
+        for i in range(plt_timestep):
+            key = "_".join([str(plt_obs[i,0]), str(plt_obs[i,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
+            traj_dict[key] = np.array(plt_obs)'''
+    #traj_dict[key] = np.array(plt_obs)  # on above
     #print('saving' + str(n_traj))
     #print('Representatio: ' + str(rep))
     #print('obs: ' + str(obs[0, :, env_timestep]))
@@ -254,6 +260,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     # print('Representation in play-policy: ' + str (rep))
     if task == 'traj':
         if flag:
+            #print('rep', rep)
             policy = np.array([policy] * rep.shape[0])
             knn.update(X=rep, Y=policy)
     else:
@@ -359,11 +366,12 @@ if __name__ == '__main__':
     parser.add_argument('--study', type=str, default='GEP') #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=1000)
     parser.add_argument('--nb_tests', type=int, default=100)
-    parser.add_argument('--cus_noise', type=str, default='0.05')
+    parser.add_argument('--cus_noise', type=str, default='0.06')
     parser.add_argument('--saving_folder', type=str, default='./outputs/')
     parser.add_argument('--traj_folder', type=str, default='./trajectory/')
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
     parser.add_argument('--save_plot', type=bool, default=False)
+    parser.add_argument('--save_pickle', type=bool, default=False)
     parser.add_argument('--nb_pt', type=int, default=2)
 
     args = parser.parse_args()
@@ -395,8 +403,8 @@ if __name__ == '__main__':
         save_traj = traj_dict[key][:,:2]
         obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
 
-    with open(traj_folder + "skill_traj", "wb") as text_file:
-        pickle.dump(obj_dict, text_file)
+    #with open(traj_folder + "skill_traj", "wb") as text_file:
+    #    pickle.dump(obj_dict, text_file)
     
     if save_plot:
         for key in traj_dict:

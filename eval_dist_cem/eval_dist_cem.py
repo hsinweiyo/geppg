@@ -4,7 +4,8 @@ from eval_dist_cem.DistModel.distModel import DistModel
 from eval_dist_cem.CEM.cem import CEM
 #from utils import *
 
-model_dir = './eval_dist_cem/DistModel/massive_point/64/'
+#model_dir = './eval_dist_cem/DistModel/instr_3d_mp/64/'
+model_dir = './eval_dist_cem/DistModel/mass-point/64/'
 distModel = DistModel('RAE_16', 5, 2, n_units=64)
 distModel.load_model(model_dir)
 
