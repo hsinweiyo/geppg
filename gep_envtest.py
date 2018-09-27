@@ -94,9 +94,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             train_perfs.append(np.nansum(rew))
 
             # offline tests
-            if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
-                write_file(knn, file_path)
+            #if ep in test_ind:
+                #file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                #write_file(knn, file_path)
 
         # exploration phase
         # # # # # # # # # # # #
@@ -122,9 +122,9 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             reward_seqs = np.concatenate([reward_seqs, rew], axis=0)
             train_perfs.append(np.nansum(rew))
             
-            if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
-                write_file(knn, file_path)
+            #if ep in test_ind:
+                #file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                #write_file(knn, file_path)
 
         # for random max timepsteps
         nb_timesteps = 50
@@ -134,6 +134,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
+
+            file_path = './outputs/' + 'Kobuki-v0' + '/' + 'mass-point-traj-092702/' + '0.06' + '_' + str(9980) + '_itr.pk'
+            gep_memory = dict()
+            with open(file_path, 'rb') as f:
+                gep_memory = pickle.load(f)
+            knn.init_update(gep_memory['representations'], gep_memory['policies'])
+
             target_coord = range(18, 180, 36)
             target_coord = [np.deg2rad(x) for x in target_coord]
             target_coord = [(np.cos(x), np.sin(x)) for x in target_coord]
@@ -145,21 +152,24 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             if task == 'goal':
                 engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
             elif task == 'traj':
-                engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
-                engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
-                #engineer_goal[:2] = mid_targets[ep%2]
-                #engineer_goal[2:4] = target_coord[ep%5]
+                #engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
+                #engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+                ins = ep%5
+                mid_ins = ep%2 + 5
+
+                engineer_goal[:2] = mid_targets[mid_ins - 5]
+                engineer_goal[2:4] = target_coord[ins]
             else:
                 print('Error of task type')
             #print('Test episode #', ep+1)
             #print('Engineer Goal:')
             #print(engineer_goal)
             #print('nb_test:', nb_tests)
-            best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
+            best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs, np.array([mid_ins, ins]))
 
         #print('Observation:')
         #print(obs)
-        print('Run performance: ', np.nansum(rew))
+        #print('Run performance: ', np.nansum(rew))
 
         print('Final performance for the run: ', np.array(final_eval_perfs).mean())
 
@@ -177,8 +187,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         gep_memory['policies'] = knn._Y
         #gep_memory['metrics'] = compute_metrics(gep_memory) # compute metrics for buffer analysis
 
-        with open(data_path+'save_gep.pk', 'wb') as f:
-            pickle.dump(gep_memory, f)
+        #with open(data_path+'save_gep.pk', 'wb') as f:
+            #pickle.dump(gep_memory, f)
 
     return np.array(final_eval_perfs).mean(), knn._Y
     
@@ -268,7 +278,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
 
     return obs, act, rew
 
-def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs):
+def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs, ins):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -280,7 +290,9 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     #print('Engineer Goal in offline-evalutation: ' + str(engineer_goal))
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
+    #print('engineer_goal:', engineer_goal)
     best_policy = knn.predict(engineer_goal)[0, :]
+    #print('best_policy', best_policy)
 
     returns = []
     for i in range(nb_eps):
@@ -289,13 +301,16 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
         env.reset()
         if task == 'goal':
-            configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
-            #print('Task id:' + str(configs))
+            env_settings = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
+            #print('Task id:' + str(env_settings))
         #obs = env.unwrapped.reset(task=engineer_goal) # TODO: need pass config to environment
         else:
-            configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
-            #print('Task id:' + str(configs))
-        obs = env.unwrapped.reset(configs, nb_timesteps) 
+            #env_settings = np.concatenate(([5], engineer_goal),axis=0)
+            env_settings = np.concatenate(([3], ins, np.zeros(2)),axis=0)
+            #print('Task id:' + str(env_settings))
+        #print('env_settings:', env_settings)
+        obs = env.unwrapped.reset(env_settings, nb_timesteps) 
+        #print('obs:', obs)
         rew[:, 0] = 0
         done = False
         info = {}
@@ -419,5 +434,5 @@ if __name__ == '__main__':
                 plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
                 plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
                 plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
-            fig.savefig('figures/'+ key +'.png')
+            fig.savefig('figures02/'+ key +'.png')
             plt.close()

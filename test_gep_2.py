@@ -2,7 +2,7 @@ import os
 import sys
 import csv
 sys.path.append('./')
-# from eval_dist_cem.eval_dist_cem import eval_dist_cem
+#from eval_dist_cem.eval_dist_cem import eval_dist_cem
 from eval_traj.eval_traj import eval_traj
 import gym
 import custom_gym
@@ -30,7 +30,9 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timestep
     nb_pt = args.nb_pt
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
+    #print('goal:', engineer_goal)
     best_policy = knn.predict(engineer_goal)[0, :]
+    #print('best_policy', best_policy)
 
     returns = []
 
@@ -50,9 +52,11 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timestep
         obs = out[0].squeeze().astype(np.float)
         rew[:, t + 1] = out[1]
         done = out[2]
+        #env.render()
             
         plt_obs.append(obs) # plot
 
+    #env.close()
     returns.append(np.nansum(rew))
 
     
@@ -126,7 +130,7 @@ def target_position(target, mid_target, task):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--n_neighbors', type=int, help='The number of k in nearest neighbor', default=1)
-    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=100)
+    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=10)
     parser.add_argument('--nb_rew', type=int, help='The number of reward', default=1)
     parser.add_argument('--env_id', type=str, help='Environment ID', default='Kobuki-v0/')
     parser.add_argument('--trial_id', type=str, help='Trial ID, ends with 1', default='0')
@@ -136,7 +140,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
     parser.add_argument('--output', type=str, help='Output filename', default='reacher_goal.csv')
     parser.add_argument('--exp_folder', type=str, help='Folder name', default='reacher/')
-    parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.1')
+    parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.06')
     args = parser.parse_args()
     
     n_neighbors = args.n_neighbors
@@ -150,7 +154,7 @@ if __name__ == '__main__':
     exp_folder  = args.exp_folder 
     data_path   = (saving_folder + env_id + exp_folder + noise + '_' + trial_id + '_itr.pk')
     plot = args.save_plot
-    print(data_path)
+    #print(data_path)
 
     gep_memory = dict()
     with open(data_path, 'rb') as f:
@@ -168,8 +172,8 @@ if __name__ == '__main__':
     else: task_id = 3
 
     for i in range(nb_eps):
-        target = np.random.randint(5)
-        target_mid = np.random.randint(2) + 5
+        target = i%5
+        target_mid = i%2 + 5
         env.reset()
         obs = env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
         # target = np.where(obs[2:] == 1)[0][0]
@@ -198,7 +202,7 @@ if __name__ == '__main__':
     with open(args.output, 'a', newline='') as f:
         writer = csv.writer(f, delimiter=' ')
         writer.writerow([str(total_timesteps), noise, str(n_neighbors), str(np.array(avg_error).mean())])
-    
+    '''
     if plot:
         for key in traj_dict:
             fig = plt.figure()
@@ -215,6 +219,6 @@ if __name__ == '__main__':
                 plt.plot(names[5], names[6], 'yo')
             # Paulolbear
             #fig.savefig('results/'+ key +'.png')
-            fig.savefig('results02/'+ key +'.png')
+            fig.savefig('results03/'+ key +'.png')
             #plt.show()
-            plt.close()
+            plt.close()'''
