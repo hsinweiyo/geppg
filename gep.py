@@ -95,7 +95,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
             # offline tests
             if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                file_path = './outputs/Kobuki-v0/mass-point-traj-act/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
 
         # exploration phase
@@ -123,7 +123,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             train_perfs.append(np.nansum(rew))
             
             if ep in test_ind:
-                file_path = './outputs/Kobuki-v0/mass-point-ablative/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
+                file_path = './outputs/Kobuki-v0/mass-point-traj-act/' + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
 
         # for random max timepsteps
@@ -134,6 +134,13 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         # final evaluation phase
         # # # # # # # # # # # # # # #
         for ep in range(nb_tests):
+
+            file_path = './outputs/' + 'Kobuki-v0' + '/' + 'mass-point-traj-0927005/' + '0.05' + '_' + str(9980) + '_itr.pk'
+            gep_memory = dict()
+            with open(file_path, 'rb') as f:
+                gep_memory = pickle.load(f)
+            knn.init_update(gep_memory['representations'], gep_memory['policies'])
+
             target_coord = range(18, 180, 36)
             target_coord = [np.deg2rad(x) for x in target_coord]
             target_coord = [(np.cos(x), np.sin(x)) for x in target_coord]
@@ -145,7 +152,8 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             if task == 'goal':
                 engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
             elif task == 'traj':
-                engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
+                #engineer_goal[:2] = np.random.uniform(-.5, .5, (2,))
+                engineer_goal[:2] = np.random.uniform(-1., 1., (2,))
                 engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
                 #engineer_goal[:2] = mid_targets[ep%2]
                 #engineer_goal[2:4] = target_coord[ep%5]
@@ -159,7 +167,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
 
         #print('Observation:')
         #print(obs)
-        print('Run performance: ', np.nansum(rew))
+        #print('Run performance: ', np.nansum(rew))
 
         print('Final performance for the run: ', np.array(final_eval_perfs).mean())
 
@@ -322,12 +330,17 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
         if task == 'goal':
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
+            traj_dict[key] = np.array(plt_obs)
             #key = "_".join([str(plt_obs[int(plt_timestep),0]), str(plt_obs[int(plt_timestep),1])])
         else:
             #key = "_".join([str(plt_obs[plt_timestep//nb_pt,0]), str(plt_obs[plt_timestep//nb_pt,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
-            key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
+            #key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
+            for i in range(plt_timestep):
+                key = "_".join([str(plt_obs[i,0]), str(plt_obs[i,1]), str(plt_obs[plt_timestep,0]), str(plt_obs[plt_timestep,1])])
+                traj_dict[key] = np.array(plt_obs)
+            
         
-        traj_dict[key] = np.array(plt_obs)
+        #traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]) + str(engineer_goal[2]) + str(engineer_goal[3]), "wb") as text_file:
         # with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
@@ -366,7 +379,7 @@ if __name__ == '__main__':
     parser.add_argument('--study', type=str, default='GEP') #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=1000)
     parser.add_argument('--nb_tests', type=int, default=100)
-    parser.add_argument('--cus_noise', type=str, default='0.06')
+    parser.add_argument('--cus_noise', type=str, default='0.05')
     parser.add_argument('--saving_folder', type=str, default='./outputs/')
     parser.add_argument('--traj_folder', type=str, default='./trajectory/')
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj',] ,default='goal')
@@ -403,8 +416,8 @@ if __name__ == '__main__':
         save_traj = traj_dict[key][:,:2]
         obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
 
-    #with open(traj_folder + "skill_traj", "wb") as text_file:
-    #    pickle.dump(obj_dict, text_file)
+    with open(traj_folder + "skill_traj_traj", "wb") as text_file:
+        pickle.dump(obj_dict, text_file)
     
     if save_plot:
         for key in traj_dict:

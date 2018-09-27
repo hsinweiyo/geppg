@@ -20,7 +20,7 @@ from gep import *
 traj_dict = dict()
 n_traj = 0
 avg_error = []
-def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timesteps, env, controller):
+def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timesteps, env, controller, n_neighbors):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -69,12 +69,12 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_rew, nb_timestep
     traj_dict[key] = np.array(plt_obs)
     n_traj += 1
     
-    real_dis = find_closest(target, target_mid, plt_obs)
+    nearest_pos = find_closest(target, target_mid, plt_obs)
 
     if task == 'goal':
         return obs[:2]
     else:
-        return real_dis
+        return nearest_pos
 
 def testing_config():
     # run parameters
@@ -94,25 +94,29 @@ def testing_config():
     representer = KobukiRepresenter(nb_pt)
     
     # inverse model
-    knn = KNNRegressor(n_neighbors=1)
+    #knn = KNNRegressor(n_neighbors=1)
 
-    return nb_timesteps, controller, representer, knn
+    return nb_timesteps, controller, representer
 def find_closest(target, target_mid, real_traj):
-    #print('target in find closest: ', target)
-    #print('target_mid in find closest: ', target_mid)
-    mid_pos = np.zeros(2)
-    pos = np.zeros(2)
-    real_traj = np.array(real_traj)[:,:2]
-    mid_pos[0], mid_pos[1], pos[0], pos[1] = target_position(target, target_mid, 'traj')
-    ctcp = np.argmin(np.linalg.norm(real_traj-mid_pos, axis=1))
-    ctft = np.argmin(np.linalg.norm(real_traj[ctcp:]-pos, axis=1))
-    #print('mid_pos, rpos:', real_traj[ctcp], ' ', mid_pos)
-    #print('fpos, rpos:', real_traj[ctft], ' ', pos)
-    min_dist_cp = np.linalg.norm(real_traj[ctcp]-mid_pos)
-    min_dist_ft = np.linalg.norm(real_traj[ctft]-pos)
-    #print('mdc, mdf: ', min_dist_cp, ' ', min_dist_ft)
-
-    return min_dist_cp + min_dist_ft
+    if task == 'goal':
+        pos = np.zeros(2)
+        real_traj = np.array(real_traj)[:,:2]
+        pos[0], pos[1] = target_position(target, target_mid, task)
+        ctft = np.argmin(np.linalg.norm(real_traj-pos, axis=1))
+        #print('mid_pos, rpos:', real_traj[ctcp], ' ', mid_pos)
+        #print('fpos, rpos:', real_traj[ctft], ' ', pos)
+        #print('mdc, mdf: ', min_dist_cp, ' ', min_dist_ft)
+        return real_traj[ctft]
+    else:
+        mid_pos = np.zeros(2)
+        pos = np.zeros(2)
+        real_traj = np.array(real_traj)[:,:2]
+        mid_pos[0], mid_pos[1], pos[0], pos[1] = target_position(target, target_mid, task)
+        ctcp = np.argmin(np.linalg.norm(real_traj-mid_pos, axis=1))
+        ctft = np.argmin(np.linalg.norm(real_traj[ctcp:]-pos, axis=1))
+        ctft = ctft + ctcp
+        
+        return np.concatenate((real_traj[ctcp], real_traj[ctft])) 
 
 def target_position(target, mid_target, task):
     target_angel = range(18, 180, 36)
@@ -160,9 +164,9 @@ if __name__ == '__main__':
     with open(data_path, 'rb') as f:
         gep_memory = pickle.load(f)
     
-    knn = KNNRegressor(n_neighbors)
+    nb_timesteps, controller, representer = testing_config()
 
-    nb_timesteps, controller, representer, knn = testing_config()
+    knn = KNNRegressor(n_neighbors)
 
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
 
@@ -187,15 +191,17 @@ if __name__ == '__main__':
             mid_x, mid_y, x, y = target_position(target, target_mid, task)
             ideal_pos = [mid_x, mid_y, x, y]
 
-        last_pos = run_testing(target, target_mid, goal, knn, obs, nb_rew, nb_timesteps, env, controller)
-        print ('Goal evaluated by dist_cem: ', goal)
-        print ('Real target position: ', ideal_pos)
+        nearest_pos = run_testing(target, target_mid, goal, knn, obs, nb_rew, nb_timesteps, env, controller, n_neighbors)
+        print ('Goal evaluated by dist_cem: ' + str(goal))
+        print ('Real target position: ' + str(ideal_pos))
         #print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
-        print('l2norm: ', last_pos)
+        print ('Nearest position: x: ' + str(nearest_pos[0]) + ' y: ' + str(nearest_pos[1]))
+        print ('L2norm === ' + str(np.linalg.norm(nearest_pos - ideal_pos)))
         if task == 'goal':
-            avg_error.append(np.linalg.norm(last_pos - ideal_pos))
+            avg_error.append(np.linalg.norm(nearest_pos - ideal_pos))
         else:
-            avg_error.append(last_pos)
+            avg_error.append(np.linalg.norm(nearest_pos[:2] - ideal_pos[:2]))
+            avg_error.append(np.linalg.norm(nearest_pos[2:4] - ideal_pos[2:4]))
 
     print('Average error: ' + str (np.array(avg_error).mean()))
     total_timesteps = int(trial_id) * 50
