@@ -60,8 +60,12 @@ class KNNRegressor():
         input_X: goal (representation)
         """
         in_knn = np.copy(input_X)
-
-        return self._model.predict(in_knn.reshape(1, -1))
+        #print('in_knn: ', in_knn)
+        #print('in_knn.reshape: ', in_knn.reshape(1, -1))
+        #print('shape of X', in_knn.shape)
+        #print('shape 0 of X', in_knn.shape[0])
+        #assert 0
+        return self._model.predict(in_knn)
 
 
     def terminate(self):

@@ -78,7 +78,10 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         for ep in range(nb_bootstrap):
             print('Bootstrap episode #', ep+1)
 
-            nb_timesteps = np.random.randint(5, 15)
+            if task == 'goal':
+                nb_timesteps = np.random.randint(5, 21)
+            else:
+                nb_timesteps = np.random.randint(5, 21)
             action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
             observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
             reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
@@ -107,7 +110,10 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
         for ep in range(nb_bootstrap, nb_explorations):
             print('Random Goal episode #', ep+1)
 
-            nb_timesteps = np.random.randint(5, 15)
+            if task == 'goal':
+                nb_timesteps = np.random.randint(5, 21)
+            else:
+                nb_timesteps = np.random.randint(5, 21)
             action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
             observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
             reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
@@ -129,17 +135,22 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
                 file_path = saving_folder + env_id + '/' + args.save_exp + str(noise) + '_' + str(int(ep)) + '_itr.pk'
                 write_file(knn, file_path)
         
-        nb_timesteps = 15
+        if task == 'goal':
+            nb_timesteps = 20
+        else:
+            nb_timesteps = 20
         action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
         observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
         reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
 
-        #mid_goal = np.array([[.1, .1], [.1, -.1]]) / 0.21
-        #f_goal = np.array([[0, .15], [-.1, .1], [-.2, 0], [-.1, -.1], [0, -.15]]) / 0.21
-        mid_goal = np.array([[np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))], [np.cos(np.deg2rad(315)), np.sin(np.deg2rad(315))]])
-        f_goal = []
-        for x in range(5):
-            f_goal.append([np.cos(np.deg2rad(180)) * x * 0.2 - 0.1, np.sin(np.deg2rad(180)) * x * 0.2])
+        if task == 'goal':
+            mid_goal = np.array([[.1, .1], [.1, -.1]]) / 0.21
+            f_goal = np.array([[0, .15], [-.1, .1], [-.2, 0], [-.1, -.1], [0, -.15]]) / 0.21
+        else:
+            mid_goal = np.array([[np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))], [np.cos(np.deg2rad(315)), np.sin(np.deg2rad(315))]])
+            f_goal = []
+            for x in range(5):
+                f_goal.append([np.cos(np.deg2rad(180)) * x * 0.2 - 0.1, np.sin(np.deg2rad(180)) * x * 0.2])
         #print('goals:', mid_goal, ' ', f_goal)
         #assert 0
         # final evaluation phase
@@ -252,11 +263,15 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     plt_obs = plt_obs.transpose()
     if task == 'goal':
         key = "_".join([str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
+        traj_dict[key] = np.array(plt_obs)
     else:
-        key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
+        for i in range(env_timestep):
+            key = "_".join([str(plt_obs[i,0]), str(plt_obs[i,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
+            traj_dict[key] = np.array(plt_obs)
+        #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
     #print('env_timestep-1:' + str(plt_obs[env_timestep-1]))
     #print('env_timestep:' + str(plt_obs[env_timestep]))
-    traj_dict[key] = np.array(plt_obs)
+    #traj_dict[key] = np.array(plt_obs)
     #n _traj += 1
 
     '''if max_timestep == True:
@@ -372,12 +387,13 @@ def plot_traj():
         x_z = key.split('_')
         if task == 'goal':
             plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+            fig.savefig('figures/'+key + '.png')
         else:
             plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'bo')
             plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+            fig.savefig('figures_traj/'+key + '.png')
         #print(x_z[2])
         #plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
-        fig.savefig('figures/'+key + '.png')
         plt.close()
     
     
@@ -395,7 +411,7 @@ if __name__ == '__main__':
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj'], default='goal')
     parser.add_argument('--save_plot', type=bool, default=False)
     parser.add_argument('--save_pickle', type=bool, default=False)
-    parser.add_argument('--save_exp', type=str, default='reacher_traj/')
+    parser.add_argument('--save_exp', type=str, default='reacher_traj_0927/')
     parser.add_argument('--nb_pt', type=int, default=2)
     parser.add_argument('--eval_ins', type=bool, default=False)
     args = parser.parse_args()
@@ -427,9 +443,12 @@ if __name__ == '__main__':
         obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
     #fig = plt.figure()
     #plt.axis([-2.0, 2.0, -2.0, 2.0])
-    
-    #with open(traj_folder + "skill_traj", "wb") as text_file:
-        #pickle.dump(obj_dict, text_file)
+    if task == 'goal':
+        with open(traj_folder + "skill_traj", "wb") as text_file:
+            pickle.dump(obj_dict, text_file)
+    else:
+        with open(traj_folder + "skill_traj_2", "wb") as text_file:
+            pickle.dump(obj_dict, text_file)
 
     if save_plot:
         plot_traj()
