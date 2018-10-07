@@ -1,7 +1,7 @@
 import numpy as np
 
 from controllers import NNController
-from representers import CheetahRepresenter, CMCRepresenter, KobukiRepresenter
+from representers import CheetahRepresenter, CMCRepresenter, MassPointRepresenter
 from inverse_models import KNNRegressor
 
 from gep_utils import *
@@ -84,7 +84,7 @@ def cmc_config():
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval,  \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
 
-def kobuki_config(task, nb_pt, cus_noise, nb_act):
+def mass_train_config(task, nb_pt, cus_noise, nb_act):
     # run parameters
     nb_bootstrap = 300
     nb_explorations = 100
@@ -110,7 +110,7 @@ def kobuki_config(task, nb_pt, cus_noise, nb_act):
     nb_weights = controller.nb_weights
 
     # representer
-    representer = KobukiRepresenter(nb_pt)
+    representer = MassPointRepresenter(nb_pt)
     initial_space = representer.initial_space
     goal_space = representer.initial_space
     nb_rep = representer.dim
@@ -126,3 +126,25 @@ def kobuki_config(task, nb_pt, cus_noise, nb_act):
 
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
+
+def mass_test_config(nb_pt):
+    # run parameters
+    nb_timesteps = 50
+    # controller parameters
+    hidden_sizes = []
+    controller_tmp = 1.
+    activation = 'relu'
+    subset_obs = range(7)
+    norm_values = None
+
+    scale = np.array([[-1.,1.], [-1.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.]])
+    controller = NNController(hidden_sizes, controller_tmp, subset_obs, 1, norm_values, scale, activation)
+
+    # representer
+    representer = MassPointRepresenter(nb_pt)
+    
+    # inverse model
+    knn = KNNRegressor(n_neighbors=1)
+
+    return nb_timesteps, controller, representer, knn
+    

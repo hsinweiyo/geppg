@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import pickle
+import matplotlib.pyplot as plt
 from sklearn.neighbors import NearestNeighbors
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 import gym
@@ -8,13 +10,14 @@ import gym
 def create_data_path(saving_folder, env_id, trial_id):
     data_path = saving_folder + env_id + '/' + str(trial_id) + '/'
     if os.path.exists(data_path):
-        i = 1
-        while os.path.exists(saving_folder + env_id + '/' + str(trial_id + 100 * i) + '/'):
-            i += 1
-        trial_id += i * 100
+        # i = 1
+        # while os.path.exists(saving_folder + env_id + '/' + str(trial_id + 100 * i) + '/'):
+        #     i += 1
+        # trial_id += i * 100
         print('result_path already exist, trial_id changed to: ', trial_id)
     data_path = saving_folder + env_id + '/' + str(trial_id) + '/'
-    os.mkdir(data_path)
+    #os.mkdir(data_path)
+    os.makedirs(os.path.dirname(data_path), exist_ok=True)
 
     return data_path
 
@@ -140,3 +143,61 @@ def replay_save_video(env_id, policy, path_vids):
     print('Run performance: ', np.nansum(rew))
     vid_env.close()
 
+def target_position(target, mid_target, task):
+    target_angel = range(18, 180, 36)
+    target_rad = np.deg2rad(target_angel[int(target)])
+    x, y = np.cos(target_rad), np.sin(target_rad)
+
+    if task == 'goal':
+        return x, y
+    else:
+        mid_angle = [0, 180]
+        mid_rad = np.deg2rad(mid_angle[int(mid_target)-5])
+        mid_x, mid_y = 0.25 * np.cos(mid_rad), 0.25 * np.sin(mid_rad) 
+        return mid_x, mid_y, x, y
+
+def mass_test_plot(flag, traj_dict, task):
+    if flag:
+        for key in traj_dict:
+            fig = plt.figure()
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+            names = key.split('_')
+            if task == 'goal':
+                target_x, target_y = target_position(names[1], 0, task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+            else:
+                mid_x, mid_y, target_x, target_y = target_position(names[1], names[2], task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+                plt.plot(mid_x, mid_y, 'bo')
+                plt.plot(names[3], names[4], 'go')
+                plt.plot(names[5], names[6], 'yo')
+            # Paulolbear
+            #fig.savefig('results/'+ key +'.png')
+            fig.savefig('results02/'+ key +'.png')
+            #plt.show()
+            plt.close()
+            
+def mass_eval_plot(flag, traj_dict, task):
+    if flag:
+        for key in traj_dict:
+            fig = plt.figure()
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+        
+            x_z = key.split('_')
+
+            if task == 'goal':
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+            else:
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+                plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+            fig.savefig('figures/'+ key +'.png')
+            plt.close()
+
+def write_file(knn, data_path):
+    gep_memory = dict()
+    gep_memory['representations'] = knn._X
+    gep_memory['policies'] = knn._Y
+
+    with open(data_path, 'wb') as f:
+        pickle.dump(gep_memory, f)

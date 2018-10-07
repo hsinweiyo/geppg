@@ -1,8 +1,5 @@
 import numpy as np
-
 from gep_utils import *
-
-
 class CheetahRepresenter():
 
     def __init__(self):
@@ -61,7 +58,7 @@ class CMCRepresenter():
     def dim(self):
         return self._initial_space.shape[0]
 
-class KobukiRepresenter():
+class MassPointRepresenter():
   
     def __init__(self, nb_pt):
         self._description = ['engineer_goal_x', 'engineer_goal_y']
