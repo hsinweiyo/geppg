@@ -18,7 +18,7 @@ traj_dict = dict()
 obj_dict = dict()
 n_traj = 0
 
-def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder, eval_ins):
+def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_folder, traj_folder, eval_ins, nb_neighbors):
 
     # create data path
     data_path = create_data_path(saving_folder, env_id, trial_id)
@@ -33,10 +33,11 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
     if 'GEP' in study:
 
         # define environment
-        if task == 'goal':
+        '''if task == 'goal':
             env = gym.make('ReacherGEP-v0')
         else: 
-            env = gym.make('ReacherGEPTraj-v0')
+            env = gym.make('ReacherGEPTraj-v0')'''
+        env = gym.make('ReacherGEP-v0')
         
         nb_act = env.action_space.shape[0]
         nb_obs = env.observation_space.shape[0]
@@ -118,7 +119,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
             observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
             reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
             # random goal strategy
-            policy = random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights)
+            policy = random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights, nb_neighbors)
 
             # play policy and update knn
             obs, act, rew = play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller,
@@ -168,7 +169,7 @@ def run_experiment(env_id, trial, noise_type, study, nb_exploration, saving_fold
                     m_rad = np.random.sample()
                     engineer_goal = np.array([np.cos(np.deg2rad(m_theta)) * m_rad, np.sin(np.deg2rad(m_theta)) * m_rad, np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
                 print('goal', engineer_goal)
-            best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs)
+            best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, final_eval_perfs, nb_neighbors)
 
         #print('Observation:')
         #print(obs)
@@ -219,22 +220,27 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     Play a policy in the environment for a given number of timesteps, usin a NN controller.
     Then represent the trajectory and update the inverse model.
     """
+    global n_traj
+    task = args.task_type
+    nb_pt = args.nb_pt
     obs = np.zeros([1, nb_obs, nb_timesteps + 1])
     act = np.zeros([1, nb_act, nb_timesteps])
     rew = np.zeros([1, nb_rew, nb_timesteps + 1])
     obs.fill(np.nan)
     act.fill(np.nan)
     rew.fill(np.nan)
+
     env.reset()
-    obs[0, :, 0] = env.unwrapped.reset_model(maxtimestep=nb_timesteps)
+    if task == 'goal':
+        obs[0, :, 0] = env.unwrapped.reset_model(np.concatenate(([0], np.zeros(4))), maxtimestep=nb_timesteps)
+    else:
+        obs[0, :, 0] = env.unwrapped.reset_model(np.concatenate(([1], np.zeros(4))), maxtimestep=nb_timesteps)
     #print('obs reset: ' + str(obs))
+    
     rew[0, :, 0] = 0
     done = False # termination signal
     env_timestep = 0
-    task = args.task_type
-    nb_pt = args.nb_pt
 
-    global n_traj
     #env.render()
     # Check Observation Range
     for t in range(nb_timesteps):
@@ -261,13 +267,13 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     x, y = obs[:,0,:], obs[:,1,:]
     plt_obs = np.reshape(np.array([x,y]), (2, nb_timesteps+1))
     plt_obs = plt_obs.transpose()
-    if task == 'goal':
+    '''if task == 'goal':
         key = "_".join([str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
         traj_dict[key] = np.array(plt_obs)
     else:
         for i in range(env_timestep):
             key = "_".join([str(plt_obs[i,0]), str(plt_obs[i,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
-            traj_dict[key] = np.array(plt_obs)
+            traj_dict[key] = np.array(plt_obs)'''
         #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1])])
     #print('env_timestep-1:' + str(plt_obs[env_timestep-1]))
     #print('env_timestep:' + str(plt_obs[env_timestep]))
@@ -296,7 +302,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
     
     return obs, act, rew
 
-def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs):
+def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, eval_perfs, nb_neighbors):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -305,7 +311,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     #print('engl: ' + str(engineer_goal))
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
-    best_policy = knn.predict(engineer_goal)[0, :]
+    best_policy = knn.predict(np.array([engineer_goal] * nb_neighbors))[0, :]
     task = args.task_type
     nb_pt = args.nb_pt
     #print('best_policy', best_policy.shape)
@@ -316,7 +322,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
-        obs = env.unwrapped.reset_model(engineer_goal, nb_timesteps, isEval=True) # TODO: need pass config to environment
+        if task == 'goal':
+            configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
+        else:
+            configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
+        obs = env.unwrapped.reset_model(configs, nb_timesteps, isEval=True)
+        
         rew[:, 0] = 0
         done = False
         info = {}
@@ -349,7 +360,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         else:
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
         #key = "_".join([str(plt_obs[env_timestep//2,0]), str(plt_obs[env_timestep//2,1]), str(plt_obs[env_timestep,0]), str(plt_obs[env_timestep,1]), str(n_traj)])
-        #traj_dict[key] = np.array(plt_obs)
+        traj_dict[key] = np.array(plt_obs)
         # write the observation to text file
         #with open(traj_folder + "agent_" + str(engineer_goal[0]) + str(engineer_goal[1]), "wb") as text_file:
             #pickle.dump(plt_obs, text_file)
@@ -361,7 +372,7 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
     return best_policy
 
-def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
+def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights, nb_neighbors):
     """
     Draw a goal, find policy associated to its nearest neighbor in the representation space, add noise to it.
     """
@@ -371,6 +382,7 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
     goal = scale_vec(goal, initial_space)
 
     # find policy of nearest neighbor
+    goal = np.array([goal] * nb_neighbors)
     policy = knn.predict(goal)[0]
 
     # add exploration noise
@@ -402,6 +414,7 @@ if __name__ == '__main__':
     parser.add_argument('--trial', type=int, default=1)
     parser.add_argument('--env_id', type=str, default='Kobuki-v0')
     parser.add_argument('--noise_type', type=str, default='ou_0.3')  # choices are adaptive-param_xx, ou_xx, normal_xx, decreasing-ou_xx, none
+    parser.add_argument('--nb_neighbors', type=int, default=1)
     parser.add_argument('--study', type=str, default='GEP') #'DDPG'  #'GEP_PG'
     parser.add_argument('--nb_exploration', type=int, default=1000)
     parser.add_argument('--nb_tests', type=int, default=100)
@@ -411,7 +424,7 @@ if __name__ == '__main__':
     parser.add_argument('--task_type', type=str, choices=['goal', 'traj'], default='goal')
     parser.add_argument('--save_plot', type=bool, default=False)
     parser.add_argument('--save_pickle', type=bool, default=False)
-    parser.add_argument('--save_exp', type=str, default='reacher_traj_0927/')
+    parser.add_argument('--save_exp', type=str, default='reacher_traj_act/')
     parser.add_argument('--nb_pt', type=int, default=2)
     parser.add_argument('--eval_ins', type=bool, default=False)
     args = parser.parse_args()
@@ -430,10 +443,11 @@ if __name__ == '__main__':
     save_plot      = args.save_plot
     nb_pt          = args.nb_pt
     eval_ins       = args.eval_ins
+    nb_neighbors   = args.nb_neighbors
 
     #pos_dict[0.,0.,0.]
     for i in range(nb_runs):
-        gep_perf[i], policies = run_experiment(env_id, trial_id, noise_type, study, nb_exploration, saving_folder, traj_folder, eval_ins)
+        gep_perf[i], policies = run_experiment(env_id, trial_id, noise_type, study, nb_exploration, saving_folder, traj_folder, eval_ins, nb_neighbors)
         print(gep_perf)
         print('Average performance: ', gep_perf.mean())
         #replay_save_video(env_id, policies, video_folder)
@@ -443,15 +457,11 @@ if __name__ == '__main__':
         obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
     #fig = plt.figure()
     #plt.axis([-2.0, 2.0, -2.0, 2.0])
-    if task == 'goal':
+    '''if task == 'goal':
         with open(traj_folder + "skill_traj", "wb") as text_file:
             pickle.dump(obj_dict, text_file)
     else:
         with open(traj_folder + "skill_traj_2", "wb") as text_file:
-            pickle.dump(obj_dict, text_file)
-
-    if save_plot:
+            pickle.dump(obj_dict, text_file)'''
+    if save_plot == True:
         plot_traj()
-
-    #fig.savefig('figures/'+key + '.png')
-    #plt.close()

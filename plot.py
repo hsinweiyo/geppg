@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import csv
 x = []
 y = []
-with open('final_reacher_goal.csv', 'r') as f:
+with open('reacher_goal_act.csv', 'r') as f:
     plots = list(csv.reader(f, delimiter=' '))
     #print(plots)
     for row in plots:

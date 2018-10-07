@@ -29,9 +29,9 @@ def run_testing(target, target_mid, engineer_goal, knn, obs, nb_rew, nb_timestep
     #coord = [18, 54, 90, 126, 162]
     #np.array([np.cos(np.deg2rad(coord[n_traj])), np.sin(np.deg2rad(coord[n_traj]))])
     #print('engineer_goal: ', engineer_goal)
-    engineer_goal = np.array([engineer_goal] * n_neighbors)
+    #engineer_goal = np.array([engineer_goal] * n_neighbors)
     #print('engineer_goal expend: ', engineer_goal)
-    best_policy = knn.predict(engineer_goal)[0, :]
+    best_policy = knn.predict(np.array([engineer_goal] * n_neighbors))[0, :]
     #print('best_policy:', best_policy)
     #assert 0
     returns = []
@@ -60,7 +60,7 @@ def run_testing(target, target_mid, engineer_goal, knn, obs, nb_rew, nb_timestep
     if task == 'goal': 
         key = "_".join([str(n_traj), str(target)])
     else:
-        key = "_".join([str(n_traj), str(target), str(target_mid), str(engineer_goal[0][0]), str(engineer_goal[0][1]), str(engineer_goal[0][2]), str(engineer_goal[0][3])])
+        key = "_".join([str(n_traj), str(target), str(target_mid), str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
     
     #key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3]), str(n_traj), str(info['hit'])])
     traj_dict[key] = np.array(plt_obs)
@@ -180,10 +180,11 @@ if __name__ == '__main__':
     plot = args.save_plot
     #print(data_path)
 
-    if task == 'goal':
+    '''if task == 'goal':
         env = gym.make('ReacherGEPTest-v0')
     else:
-        env = gym.make('ReacherGEPTrajTest-v0')
+        env = gym.make('ReacherGEPTrajTest-v0')'''
+    env = gym.make('ReacherGEP-v0')
 
     gep_memory = dict()
     with open(data_path, 'rb') as f:
@@ -196,6 +197,11 @@ if __name__ == '__main__':
 
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
 
+    if task == 'goal':
+        task_id = 2
+    else:
+        task_id = 3
+
     for i in range(nb_eps):
         # target = np.random.randint(5)
         target = i % 5
@@ -204,7 +210,8 @@ if __name__ == '__main__':
         else:
             target_mid = i%2 + 5
         env.reset()
-        obs = env.unwrapped.reset_model(np.array([target_mid, target]))
+        obs = env.unwrapped.reset_model(np.array([task_id, target_mid, target, 0., 0.]))
+        #obs = env.unwrapped.reset_model(np.array([target_mid, target]))
         
         if task == 'goal':
             goal = eval_dist_cem(target)
@@ -234,9 +241,9 @@ if __name__ == '__main__':
     print('Average error: ' + str (np.array(avg_error).mean()))
     
     total_timesteps = int(trial_id) * 20
-    with open(output, 'a', newline='') as f:
-        writer = csv.writer(f, delimiter=' ')
-        writer.writerow([str(total_timesteps), args.noise, str(n_neighbors), str(np.array(avg_error).mean())])
+    #with open(output, 'a', newline='') as f:
+    #    writer = csv.writer(f, delimiter=' ')
+    #    writer.writerow([str(total_timesteps), args.noise, str(n_neighbors), str(np.array(avg_error).mean())])
 
-    if plot:
-        plot_fig(traj_dict)
+    #if plot:
+    #    plot_fig(traj_dict)
