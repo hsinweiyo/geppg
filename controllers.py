@@ -3,12 +3,13 @@ import torch
 
 class NNController():
 
-    def __init__(self, hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation):
+    def __init__(self, hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation, env_id):
 
         self._subset_obs = subset_obs
         self._controller_tmp = controller_tmp
         self._norm_values = norm_values
         self._scale = scale # None or space from which observation should be scale to [-1,1]^N
+        self._env_id = env_id
 
         if self._norm_values is not None and self._subset_obs is not None:
             self._norm_values = self._norm_values[:, self._subset_obs]
@@ -55,8 +56,11 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            obs_in = ((obs_in - self._min) * 2*np.ones([7]) / self._range) - np.ones([7])
-
+            if self._env_id == 'Mass-point':
+                obs_in = ((obs_in - self._min) * 2*np.ones([7]) / self._range) - np.ones([7])
+            else:
+                obs_in = ((obs_in - self._min) * 2*np.ones([4]) / self._range) - np.ones([4])
+              
         x = torch.from_numpy(obs_in.reshape(1,-1)).type(self._dtype)
         y = x.mm(self._weights[0])
         #print('y:' + str(y))

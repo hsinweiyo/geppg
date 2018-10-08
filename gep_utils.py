@@ -177,7 +177,7 @@ def mass_test_plot(flag, traj_dict, task):
             #plt.show()
             plt.close()
             
-def mass_eval_plot(flag, traj_dict, task):
+def eval_plot(flag, traj_dict, task):
     if flag:
         for key in traj_dict:
             fig = plt.figure()

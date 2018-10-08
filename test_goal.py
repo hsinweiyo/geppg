@@ -2,8 +2,7 @@ import os
 import sys
 import csv
 sys.path.append('./')
-from eval_dist_cem.eval_dist_cem import eval_dist_cem
-#from eval_traj.eval_traj import eval_traj
+from eval_dist_cem.eval_dist_cem import Dist_CEM
 import gym
 import custom_gym
 import numpy as np
@@ -83,15 +82,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--trial_id', type=str, help='Iteration ID, ends with 1', default='0')
     parser.add_argument('--env_id', type=str, help='Environment ID', default='Mass-point/')
+    parser.add_argument('--data_folder', type=str, help='Folder name', default='1/')
+    parser.add_argument('--task', type=str, help='Goal or traj oriented', default='goal')
+    parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.05')
     parser.add_argument('--n_neighbors', type=int, help='The number of k in nearest neighbor', default=1)
     parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=500)
     parser.add_argument('--nb_pt', type=int, help='Number of points', default=2)
     parser.add_argument('--saving_folder', type=str, help='Path of .pk file save', default='./outputs/')
-    parser.add_argument('--task', type=str, help='Goal or traj oriented', default='goal')
     parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
     parser.add_argument('--output', type=str, help='Output filename', default='testing.csv')
-    parser.add_argument('--data_folder', type=str, help='Folder name', default='1/')
-    parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.05')
     args = parser.parse_args()
     
     nb_rew      = 1
@@ -119,22 +118,26 @@ if __name__ == '__main__':
 
     env = gym.make('FiveTargetEnv-v1')
     
-    if task == 'goal': task_id = 2
-    else: task_id = 3
+    if task == 'goal':
+        task_id = 2
+        model_dir = './eval_dist_cem/DistModel/mass_point/64/'
+    else: 
+        task_id = 3
+        model_dir = './eval_traj/DistModel/MPT/128/'
+    dist_cem = Dist_CEM(task, model_dir)
 
     for i in range(nb_eps):
         target = np.random.randint(5)
         target_mid = np.random.randint(2) + 5
         env.reset()
         obs = env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
-        # target = np.where(obs[2:] == 1)[0][0]
-        # goal = eval_dist_cem(target)
         if task == 'goal':
-            goal = eval_dist_cem(target)
+            # print ('Traget: ', np.shape(target))
+            goal = dist_cem.eval_dist_cem(target)
             x, y = target_position(target, target_mid, task)
             ideal_pos = [x,y]
         else:
-            goal = eval_traj(target, target_mid)
+            goal = dist_cem.eval_traj(target, target_mid)
             mid_x, mid_y, x, y = target_position(target, target_mid, task)
             ideal_pos = [mid_x, mid_y, x, y]
 
