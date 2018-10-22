@@ -143,7 +143,7 @@ def replay_save_video(env_id, policy, path_vids):
     print('Run performance: ', np.nansum(rew))
     vid_env.close()
 
-def target_position(target, mid_target, task):
+def mass_target_position(target, mid_target, task):
     target_angel = range(18, 180, 36)
     target_rad = np.deg2rad(target_angel[int(target)])
     x, y = np.cos(target_rad), np.sin(target_rad)
@@ -156,6 +156,20 @@ def target_position(target, mid_target, task):
         mid_x, mid_y = 0.25 * np.cos(mid_rad), 0.25 * np.sin(mid_rad) 
         return mid_x, mid_y, x, y
 
+def reacher_target_position(target, task):
+    if task == 'goal':
+        target_pos = np.array([[0, .15], [-.1, .1], [-.2, 0], [-.1, -.1], [0, -.15], [.1, .1], [.1, -.1]]) / .21
+    else:
+        mid_goal = np.array([[np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))], [np.cos(np.deg2rad(315)), np.sin(np.deg2rad(315))]])
+        f_goal = []
+        for x in range(5):
+            f_goal.append([np.cos(np.deg2rad(180)) * x * 0.2 - 0.1, np.sin(np.deg2rad(180)) * x * 0.2])
+        target_pos = np.concatenate(([f_goal, mid_goal]), axis=0)
+    
+    x, y = target_pos[int(target)]
+
+    return x, y
+
 def mass_test_plot(flag, traj_dict, task):
     if flag:
         for key in traj_dict:
@@ -163,10 +177,10 @@ def mass_test_plot(flag, traj_dict, task):
             plt.axis([-1.0, 1.0, -1.0, 1.0])
             names = key.split('_')
             if task == 'goal':
-                target_x, target_y = target_position(names[1], 0, task)
+                target_x, target_y = mass_target_position(names[1], 0, task)
                 plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
             else:
-                mid_x, mid_y, target_x, target_y = target_position(names[1], names[2], task)
+                mid_x, mid_y, target_x, target_y = mass_target_position(names[1], names[2], task)
                 plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
                 plt.plot(mid_x, mid_y, 'bo')
                 plt.plot(names[3], names[4], 'go')

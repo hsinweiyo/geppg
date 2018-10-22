@@ -13,7 +13,7 @@ def reacher_train_config(env_id, nb_pt, cus_noise, nb_act):
     nb_explorations = 100
     nb_tests = 100
     nb_timesteps = 50
-    offline_eval = (1e6, 10)  # (x,y): y evaluation episodes every x (done offline)
+    offline_eval = (1e6, 20)  # (x,y): y evaluation episodes every x (done offline)
 
     # controller parameters
     hidden_sizes = []
@@ -48,7 +48,7 @@ def mass_train_config(env_id, nb_pt, cus_noise, nb_act):
     nb_explorations = 100
     nb_tests = 100
     nb_timesteps = 50
-    offline_eval = (1e6, 10)
+    offline_eval = (1e6, 20)
 
     # controller parameters
     hidden_sizes = []
@@ -85,7 +85,7 @@ def mass_train_config(env_id, nb_pt, cus_noise, nb_act):
     return nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, \
            controller, representer, nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights
 
-def mass_test_config(nb_pt):
+def mass_test_config(nb_pt, env_id, nb_act):
     # run parameters
     nb_timesteps = 50
     # controller parameters
@@ -96,7 +96,7 @@ def mass_test_config(nb_pt):
     norm_values = None
 
     scale = np.array([[-1.,1.], [-1.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.], [0.,1.]])
-    controller = NNController(hidden_sizes, controller_tmp, subset_obs, 1, norm_values, scale, activation)
+    controller = NNController(hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation, env_id)
 
     # representer
     representer = MassPointRepresenter(nb_pt)
@@ -106,3 +106,23 @@ def mass_test_config(nb_pt):
 
     return nb_timesteps, controller, representer, knn
     
+def reacher_test_config(nb_pt, env_id, nb_act):
+    # run parameters
+    nb_timesteps = 20
+    # controller parameters
+    hidden_sizes = []
+    controller_tmp = 1.
+    activation = 'relu'
+    subset_obs = range(4)
+    norm_values = None
+
+    scale = np.array([[-1.0, 1.0], [-1.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+    controller = NNController(hidden_sizes, controller_tmp, subset_obs, nb_act, norm_values, scale, activation, env_id)
+
+    # representer
+    representer = ReacherRepresenter(nb_pt)
+    
+    # inverse model
+    knn = KNNRegressor(n_neighbors=1)
+
+    return nb_timesteps, controller, representer, knn

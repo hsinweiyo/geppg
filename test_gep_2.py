@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import pickle
 import argparse
 from controllers import NNController
-from representers import KobukiRepresenter
+from representers import MassPointRepresenter
 from inverse_models import KNNRegressor
 from gep_utils import *
 from configs import *
@@ -91,7 +91,7 @@ def testing_config():
     controller = NNController(hidden_sizes, controller_tmp, subset_obs, 1, norm_values, scale, activation)
 
     # representer
-    representer = KobukiRepresenter(nb_pt)
+    representer = MassPointRepresenter(nb_pt)
     
     # inverse model
     #knn = KNNRegressor(n_neighbors=1)
@@ -195,7 +195,7 @@ if __name__ == '__main__':
         print ('Goal evaluated by dist_cem: ' + str(goal))
         print ('Real target position: ' + str(ideal_pos))
         #print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
-        print ('Nearest position: x: ' + str(nearest_pos[0]) + ' y: ' + str(nearest_pos[1]))
+        print ('Nearest position:', nearest_pos)
         print ('L2norm === ' + str(np.linalg.norm(nearest_pos - ideal_pos)))
         if task == 'goal':
             avg_error.append(np.linalg.norm(nearest_pos - ideal_pos))
@@ -208,8 +208,8 @@ if __name__ == '__main__':
     with open(args.output, 'a', newline='') as f:
         writer = csv.writer(f, delimiter=' ')
         writer.writerow([str(total_timesteps), noise, str(n_neighbors), str(np.array(avg_error).mean())])
-    '''
-    if plot:
+    
+    '''if plot:
         for key in traj_dict:
             fig = plt.figure()
             plt.axis([-1.0, 1.0, -1.0, 1.0])

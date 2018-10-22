@@ -51,8 +51,6 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     nb_tests = args.nb_tests
     if args.save_pickle:
         offline_eval = (1, 20) #(x,y): y evaluation episodes every x (done offline)
-    else:
-        offline_eval = (1e6, 20)
 
     # train_perfs = []
     # eval_perfs = []
@@ -80,6 +78,7 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
 
         print('Bootstrap episode #', ep+1)
         # sample policy at random
+        # print ('nb_weights: ', nb_weights)
         policy = np.random.random(nb_weights) * 2 - 1
 
         # play policy and update knn
@@ -297,15 +296,13 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
         if env_id == 'Mass-point':
             obs = env.unwrapped.reset(configs, nb_timesteps) 
+            plt_obs = [obs] # plot
         else:
             obs = env.unwrapped.reset_model(configs, nb_timesteps, isEval=True) 
+            plt_obs = [[obs[0], obs[1]]]
         rew[:, 0] = 0
         done = False
         info = {}
-        if env_id == 'Mass-point':
-            plt_obs = [obs] # plot
-        else:
-            plt_obs = [[obs[0], obs[1]]]
 
         for t in range(nb_timesteps):
             if done: break

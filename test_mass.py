@@ -57,36 +57,42 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_timesteps, env, 
     traj_dict[key] = np.array(plt_obs)
     n_traj += 1
     
-    real_dis = find_closest(target, target_mid, plt_obs)
+    real_dis = find_closest(target, target_mid, plt_obs, env_id)
 
     if task == 'goal':
         return obs[:2]
     else:
         return real_dis
 
-def find_closest(target, target_mid, real_traj):
+def find_closest(target, target_mid, real_traj, env_id):
     #print('target in find closest: ', target)
     #print('target_mid in find closest: ', target_mid)
     mid_pos = np.zeros(2)
     pos = np.zeros(2)
     real_traj = np.array(real_traj)[:,:2]
-    mid_pos[0], mid_pos[1], pos[0], pos[1] = target_position(target, target_mid, 'traj')
+    if env_id == 'Mass-point':
+        mid_pos[0], mid_pos[1], pos[0], pos[1] = mass_target_position(target, target_mid, 'traj')
+    else:
+        mid_pos[0], mid_pos[1] = reacher_target_position(target_mid, 'traj')
+        pos[0], pos[1] = reacher_target_position(target, 'traj')
     ctcp = np.argmin(np.linalg.norm(real_traj-mid_pos, axis=1))
     ctft = np.argmin(np.linalg.norm(real_traj[ctcp:]-pos, axis=1))
-    min_dist_cp = np.linalg.norm(real_traj[ctcp]-mid_pos)
-    min_dist_ft = np.linalg.norm(real_traj[ctft]-pos)
+    # min_dist_cp = np.linalg.norm(real_traj[ctcp]-mid_pos)
+    # min_dist_ft = np.linalg.norm(real_traj[ctft]-pos)
+    ctft = ctft + ctcp
 
-    return min_dist_cp + min_dist_ft
+    # return min_dist_cp + min_dist_ft
+    return np.concatenate((real_traj[ctcp], real_traj[ctft]))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--trial_id', type=str, help='Iteration ID, ends with 1', default='0')
-    parser.add_argument('--env_id', type=str, help='Environment ID', default='Mass-point/')
-    parser.add_argument('--data_folder', type=str, help='Folder name', default='1/')
+    parser.add_argument('--env_id', type=str, help='Environment ID', default='Mass-point')
+    parser.add_argument('--data_folder', type=str, help='Folder name', default='1')
     parser.add_argument('--task', type=str, help='Goal or traj oriented', default='goal')
     parser.add_argument('--noise', type=str, help='Value of noise in training', default='0.05')
     parser.add_argument('--n_neighbors', type=int, help='The number of k in nearest neighbor', default=1)
-    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=500)
+    parser.add_argument('--nb_eps', type=int, help='The number of episodes to evalutate', default=100)
     parser.add_argument('--nb_pt', type=int, help='Number of points', default=2)
     parser.add_argument('--saving_folder', type=str, help='Path of .pk file save', default='./outputs/')
     parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
@@ -102,7 +108,7 @@ if __name__ == '__main__':
     saving_folder = args.saving_folder
     noise       = args.noise
     data_folder = args.data_folder 
-    data_path   = (saving_folder + env_id + data_folder + noise + '_' + trial_id + '_itr.pk')
+    data_path   = (saving_folder + env_id + '/' + data_folder + '/' + noise + '_' + trial_id + '_itr.pk')
     save_plot = args.save_plot
     # print(data_path)
 
@@ -110,50 +116,74 @@ if __name__ == '__main__':
     with open(data_path, 'rb') as f:
         gep_memory = pickle.load(f)
     
+    if env_id == 'Mass-point':
+        env = gym.make('FiveTargetEnv-v1')
+    else:
+        # print('Error before make gym')
+        env = gym.make('ReacherGEP-v0')
+        # print('Error after make gym')
+
+    nb_act = env.action_space.shape[0]
+
+    if env_id == 'Mass-point':
+        nb_timesteps, controller, representer, knn = mass_test_config(args.nb_pt, env_id, nb_act)
+    else:
+        nb_timesteps, controller, representer, knn = reacher_test_config(args.nb_pt, env_id, nb_act)
+
     knn = KNNRegressor(n_neighbors)
-
-
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
 
-    env = gym.make('FiveTargetEnv-v1')
-    nb_act = env.action_space.shape[0]
-    nb_timesteps, controller, representer, knn = mass_test_config(args.nb_pt, env_id, nb_act)
     
     if task == 'goal':
         task_id = 2
-        model_dir = './eval_dist_cem/DistModel/mass_point/64/'
+        #model_dir = './eval_dist_cem/DistModel/mass_point/64/'
     else: 
         task_id = 3
-        model_dir = './eval_traj/DistModel/MPT/128/'
-    dist_cem = Dist_CEM(task, model_dir)
+        #model_dir = './eval_traj/DistModel/MPT/128/'
+    dist_cem = Dist_CEM(task, env_id)
 
     for i in range(nb_eps):
-        target = np.random.randint(5)
-        target_mid = np.random.randint(2) + 5
+        target = i % 5
+        target_mid = i % 2 + 5
         env.reset()
-        obs = env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
+        if env_id == 'Mass-point':
+            obs = env.unwrapped.reset(np.array([task_id, target_mid, target, 0., 0.]))
+        else:
+            obs = env.unwrapped.reset_model(np.array([task_id, target_mid, target, 0., 0.]))
         if task == 'goal':
             # print ('Traget: ', np.shape(target))
+            # TODO: make change of cem and sgd
             goal = dist_cem.eval_dist_cem(target)
-            x, y = target_position(target, target_mid, task)
-            ideal_pos = [x,y]
+            if env_id == 'Mass-point':
+                x, y = mass_target_position(target, target_mid, task)
+                ideal_pos = [x,y]
+            else:
+                ideal_pos = [reacher_target_position(target, task)]
         else:
-            goal = dist_cem.eval_traj(target, target_mid)
-            mid_x, mid_y, x, y = target_position(target, target_mid, task)
-            ideal_pos = [mid_x, mid_y, x, y]
+            if env_id == 'Mass-point':
+                goal = dist_cem.eval_traj(target, target_mid)
+                mid_x, mid_y, x, y = mass_target_position(target, target_mid, task)
+                ideal_pos = [mid_x, mid_y, x, y]
+            else:
+                goal = dist_cem.eval_traj(target_mid-5, target+2)
+                ideal_pos = np.concatenate((reacher_target_position(target_mid, task), reacher_target_position(target, task))) 
 
         last_pos = run_testing(target, target_mid, goal, knn, obs, nb_timesteps, env, controller)
-        # print ('Goal evaluated by dist_cem: ', goal)
-        # print ('Real target position: ', ideal_pos)
-        # print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
-        # print('l2norm: ', last_pos)
+        print ('Goal evaluated by dist_cem: ', goal)
+        print ('Real target position: ', ideal_pos)
+        print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
+        print('l2norm: ', last_pos)
         if task == 'goal':
-            avg_error.append(np.linalg.norm(last_pos - ideal_pos))
+            error = np.linalg.norm(last_pos - ideal_pos)
+            #print ('Error: ', error)
+            avg_error.append(error)
         else:
-            avg_error.append(last_pos)
+            vec = np.linalg.norm(last_pos[0:2] - ideal_pos[0:2])
+            vec2 = np.linalg.norm(last_pos[2:4] - ideal_pos[2:4])
+            avg_error.append(vec+vec2)
 
     print('Average error: ' + str (np.array(avg_error).mean()))
-    total_timesteps = int(trial_id) * 50
+    total_timesteps = int(trial_id) * nb_timesteps
     with open(args.output, 'a', newline='') as f:
         writer = csv.writer(f, delimiter=' ')
         writer.writerow([str(total_timesteps), noise, str(n_neighbors), str(np.array(avg_error).mean())])
