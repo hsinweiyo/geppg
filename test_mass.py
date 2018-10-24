@@ -49,7 +49,7 @@ def run_testing(target, mid_target, engineer_goal, knn, obs, nb_timesteps, env, 
     #env.close()
     
     if task == 'goal':
-        key = "_".join([str(n_traj), str(target)])
+        key = "_".join([str(n_traj), str(target), str(engineer_goal[0]), str(engineer_goal[1])])
     else:
         key = "_".join([str(n_traj), str(target), str(mid_target), str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
         
@@ -97,6 +97,7 @@ if __name__ == '__main__':
     parser.add_argument('--saving_folder', type=str, help='Path of .pk file save', default='./outputs/')
     parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
     parser.add_argument('--output', type=str, help='Output filename', default='testing.csv')
+    parser.add_argument('--dist', type=str, help='Dist mode name', default=None)
     args = parser.parse_args()
     
     nb_rew      = 1
@@ -110,6 +111,7 @@ if __name__ == '__main__':
     data_folder = args.data_folder 
     data_path   = (saving_folder + env_id + '/' + data_folder + '/' + noise + '_' + trial_id + '_itr.pk')
     save_plot = args.save_plot
+    dist_model = args.dist
     # print(data_path)
 
     gep_memory = dict()
@@ -126,9 +128,9 @@ if __name__ == '__main__':
     nb_act = env.action_space.shape[0]
 
     if env_id == 'Mass-point':
-        nb_timesteps, controller, representer, knn = mass_test_config(args.nb_pt, env_id, nb_act)
+        nb_timesteps, controller, representer = mass_test_config(args.nb_pt, env_id, nb_act)
     else:
-        nb_timesteps, controller, representer, knn = reacher_test_config(args.nb_pt, env_id, nb_act)
+        nb_timesteps, controller, representer = reacher_test_config(args.nb_pt, env_id, nb_act)
 
     knn = KNNRegressor(n_neighbors)
     knn.init_update(gep_memory['representations'], gep_memory['policies'])
@@ -140,7 +142,7 @@ if __name__ == '__main__':
     else: 
         task_id = 3
         #model_dir = './eval_traj/DistModel/MPT/128/'
-    dist_cem = Dist_CEM(task, env_id)
+    dist_cem = Dist_CEM(task, env_id, dist_model)
 
     for i in range(nb_eps):
         target = i % 5
@@ -169,10 +171,10 @@ if __name__ == '__main__':
                 ideal_pos = np.concatenate((reacher_target_position(target_mid, task), reacher_target_position(target, task))) 
 
         last_pos = run_testing(target, target_mid, goal, knn, obs, nb_timesteps, env, controller)
-        print ('Goal evaluated by dist_cem: ', goal)
-        print ('Real target position: ', ideal_pos)
-        print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
-        print('l2norm: ', last_pos)
+        #print ('Goal evaluated by dist_cem: ', goal)
+        #print ('Real target position: ', ideal_pos)
+        #print ('Last agent position: x: ' + str(last_pos[0]) + ' y: ' + str(last_pos[1]))
+        #print('l2norm: ', last_pos)
         if task == 'goal':
             error = np.linalg.norm(last_pos - ideal_pos)
             #print ('Error: ', error)

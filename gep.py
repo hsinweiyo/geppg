@@ -137,17 +137,9 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     reward_seqs = np.array([]).reshape(0, nb_rew, nb_timesteps+1)
     # final evaluation phase
     # # # # # # # # # # # # # # #
-    if env_id == 'Reacher' and task == 'goal':
-        mid_goal = np.array([[.1, .1], [.1, -.1]]) / 0.21
-        f_goal = np.array([[0, .15], [-.1, .1], [-.2, 0], [-.1, -.1], [0, -.15]]) / 0.21
-    elif env_id == 'Reacher' and task == 'traj':
-        mid_goal = np.array([[np.cos(np.deg2rad(45)), np.sin(np.deg2rad(45))], [np.cos(np.deg2rad(315)), np.sin(np.deg2rad(315))]])
-        f_goal = []
-        for x in range(5):
-            f_goal.append([np.cos(np.deg2rad(180)) * x * 0.2 - 0.1, np.sin(np.deg2rad(180)) * x * 0.2])
-            
     for ep in range(nb_tests):
-        engineer_goal = engineer_goal_sample(task, env_id, eval_ins, engineer_goal)
+        engineer_goal = engineer_goal_sample(task, env_id, eval_ins, engineer_goal, ep)
+        # print('engineer_goal in finalEval: ', engineer_goal)
         # if task == 'goal':
         #     engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
         # elif task == 'traj':
@@ -156,8 +148,10 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
         # else:
         #     print('Error of task type')
         print('Test episode #', ep+1)
-        print('nb_test:', nb_tests)
-        best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller)
+        # print('nb_test:', nb_tests)
+        # paulolbear test
+        best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, ep)
+        #best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller)
     # print('Final performance for the run: ', np.array(final_eval_perfs).mean())
 
     # wrap up and save
@@ -169,23 +163,36 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     # return np.array(final_eval_perfs).mean(), knn._Y
     return knn._Y
 
-def engineer_goal_sample(task, env_id, eval_ins, engineer_goal):
+def engineer_goal_sample(task, env_id, eval_ins, engineer_goal, ep):
     if env_id == 'Mass-point':
         if task == 'goal':
-            engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
+            if eval_ins == True:
+                # according to GEP_utils
+                engineer_goal = mass_target_position(ep%5, -1, task)
+            else:
+                engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
         elif task == 'traj':
-            engineer_goal[:2] = np.random.uniform(-1., 1., (2,))
-            engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+            if eval_ins == True:
+                # according to GEP_utils
+                engineer_goal = mass_target_position(ep%5, ep%2 + 5, task)
+            else:
+                engineer_goal[:2] = np.random.uniform(-1., 1., (2,))
+                engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
         else:
             print('Error Task Type')
     else:
         theta = np.random.sample() * 360
         rad = np.random.sample()
         if task == 'goal':
-            engineer_goal = np.array([np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
+            if eval_ins == True:
+                # according to GEP_utils
+                engineer_goal = reacher_target_position(ep%5, task)
+            else:
+                engineer_goal = np.array([np.cos(np.deg2rad(theta)) * rad, np.sin(np.deg2rad(theta)) * rad])
         elif task == 'traj':
             if eval_ins == True:
-                engineer_goal = np.concatenate((mid_goal[ep%2], f_goal[ep%5]), axis=0)
+                # according to GEP_utils
+                engineer_goal = np.concatenate( (reacher_target_position(ep%2 + 5, task), reacher_target_position(ep%5, task)), axis=0)
             else:
                 m_theta = np.random.sample() * 360
                 m_rad = np.random.sample()
@@ -273,7 +280,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
 
     return obs, act, rew
 
-def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller):
+def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, ep):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -291,6 +298,8 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
 
         env.reset()
         if task == 'goal':
+            # paulolbear test
+            #configs = np.concatenate(([2], np.zeros(1), [ep%5], np.zeros(1), np.zeros(1)),axis=0)
             configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
         else:
             configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)

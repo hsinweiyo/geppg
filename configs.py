@@ -102,9 +102,9 @@ def mass_test_config(nb_pt, env_id, nb_act):
     representer = MassPointRepresenter(nb_pt)
     
     # inverse model
-    knn = KNNRegressor(n_neighbors=1)
+    #knn = KNNRegressor(n_neighbors=1)
 
-    return nb_timesteps, controller, representer, knn
+    return nb_timesteps, controller, representer
     
 def reacher_test_config(nb_pt, env_id, nb_act):
     # run parameters
@@ -123,6 +123,6 @@ def reacher_test_config(nb_pt, env_id, nb_act):
     representer = ReacherRepresenter(nb_pt)
     
     # inverse model
-    knn = KNNRegressor(n_neighbors=1)
+    #knn = KNNRegressor(n_neighbors=1)
 
-    return nb_timesteps, controller, representer, knn
+    return nb_timesteps, controller, representer

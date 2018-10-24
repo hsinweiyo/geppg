@@ -4,6 +4,10 @@ from eval_dist_cem.DistModel.distModel import DistModel
 from eval_dist_cem.DistModel.distModel_sgd import DistModel_SGD
 from eval_dist_cem.CEM.cem_traj import CEM_traj
 from eval_dist_cem.SGD.sgd import SGD
+#from DistModel.distModel import DistModel
+#from DistModel.distModel_sgd import DistModel_SGD
+#from CEM.cem_traj import CEM_traj
+#from SGD.sgd import SGD
 #from utils import *
 
 class Dist_CEM():
@@ -15,6 +19,7 @@ class Dist_CEM():
       if eval_method == 'cem':
         if env_id == 'Mass-point':
           if task == 'goal':
+              print ('In mass-point goal')
               '''
               if dist_model != None:
                   model_dir = dist_model
@@ -22,23 +27,34 @@ class Dist_CEM():
                   print ('model is none')
                   model_dir = './eval_dist_cem/DistModel/mass_point/64/'
               '''
-              model_dir = './eval_dist_cem/DistModel/mass_point/64/'
+              #model_dir = './eval_dist_cem/DistModel/mass_point/64/'
+              model_dir = './eval_dist_cem/DistModel/mass_goal_dist1/'
               self._distModel = DistModel('RAE_16', 5, 2, n_units=64)
               self._distModel.load_model(model_dir)
-              self._cem = CEM_traj(self._distModel.pred, 2, v_min=[-1, 0], v_max=[1, 1], maxits=100)
+              self._cem = CEM_traj(self._distModel.pred, 2, v_min=[-1, 0], v_max=[1, 1], maxits=100, sampleMethod='Uniform')
           else:
               #model_dir = './eval_traj/DistModel/MPT/128/'
-              model_dir = './eval_dist_cem/DistModel/MPT/128/'
+              if dist_model != None:
+                  print ('Path of dist func. ', dist_model)
+                  model_dir = "./eval_dist_cem/DistModel/NMPT/noise_0/1/"
+                  # model_dir = dist_model
+              else:
+                  print ('model is none')
+                  model_dir = './eval_dist_cem/DistModel/MPT/128/'
+                 #  model_dir = './eval_dist_cem/DistModel/NMPT/noise_0/1/'
+              # model_dir = './eval_dist_cem/DistModel/MPT/128/'
               self._distModel = DistModel('RAE_16', 7, 4, n_units=128)
               self._distModel.load_model(model_dir)
               self._cem = CEM_traj(self._distModel.pred, 4, v_min=[-0.5, -0.5, -1, -1], v_max=[0.5, 0.5, 1., 1.], maxits=100, sampleMethod='Uniform')
         else:
           if task == 'goal':
-              if dist_model != None:
+              '''if dist_model != None:
                   model_dir = dist_model
               else:
                   print ('model is none')
                   model_dir = './eval_dist_cem/DistModel/reacher/128/'
+              '''
+              model_dir = './eval_dist_cem/DistModel/reacher_goal_dist3/'
               self._distModel = DistModel('RAE_16', 5, 2, n_units=128)
               self._distModel.load_model(model_dir)
               self._cem = CEM_traj(self._distModel.pred, 2, v_min=[-1., -1.], v_max=[1., 1.], N=1000, maxits=50, sampleMethod='Uniform')
@@ -79,8 +95,8 @@ class Dist_CEM():
         #instr[map_shuffle(i)] = 1
         instr[i] = 1
         pred_coord = self._cem.eval(instr)
-        #print('test: ', i)
-        #print('eval: ', instr)
+        print('test: ', i)
+        print('eval: ', instr)
         return pred_coord
 
     def eval_dist_sgd(self, i):
@@ -97,5 +113,6 @@ class Dist_CEM():
         return pred_coord
 
 if __name__ == '__main__':
+    dist = Dist_CEM('goal','Mass-point')
     for i in range(5):
-        print(eval_dist_cem(i))
+        print(dist.eval_dist_cem(i))

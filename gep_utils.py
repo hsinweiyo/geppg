@@ -179,6 +179,7 @@ def mass_test_plot(flag, traj_dict, task):
             if task == 'goal':
                 target_x, target_y = mass_target_position(names[1], 0, task)
                 plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+                plt.plot(names[2], names[3], 'go')
             else:
                 mid_x, mid_y, target_x, target_y = mass_target_position(names[1], names[2], task)
                 plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
