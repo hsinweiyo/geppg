@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 class CEM_traj():
-  def __init__(self, func, d, v_min=None, v_max=None, maxits=500, N=100, Ne=10, argmin=True, sampleMethod='Gaussian'):
+  def __init__(self, func, d, v_min=None, v_max=None, maxits=500, N=100, Ne=50, argmin=True, sampleMethod='Gaussian'):
     self.func = func            # target function
     self.d = d                  # dimension of function input X
     self.maxits = maxits        # maximum iteration

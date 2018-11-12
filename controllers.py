@@ -19,7 +19,7 @@ class NNController():
             self._range = self._scale[:, 1] - self._min
 
         self._layer_sizes = [len(self._subset_obs)] + hidden_sizes + [nb_act]
-        print('nbact', nb_act)
+        # print('nbact', nb_act)
         # print ('Len of layer sizes\n')
         # print (self._layer_sizes)
         # compute number of parameters
@@ -56,7 +56,7 @@ class NNController():
         elif self._scale is not None:
             #print(obs_in)
             #print(self._min)
-            if self._env_id == 'Mass-point':
+            if self._env_id == 'Mass-point' or 'Kobuki':
                 obs_in = ((obs_in - self._min) * 2*np.ones([7]) / self._range) - np.ones([7])
             else:
                 obs_in = ((obs_in - self._min) * 2*np.ones([4]) / self._range) - np.ones([4])
@@ -77,9 +77,10 @@ class NNController():
         y = y.numpy()
         y = np.tanh(np.longfloat(self._controller_tmp * y))
         self._action = y[0, :].astype(np.float64)
-        if self._action.size == 1:
-            self._action = np.array([self._action])
-
+        # 1106
+        #if self._action.size == 1:
+            # self._action = np.array([self._action])
+        #    print ('action size = 1')
         self._action = np.clip(self._action, -1, 1) # just in case..
         #print('Len of action in controllers\n')
         #print (len(self._action))

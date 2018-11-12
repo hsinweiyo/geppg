@@ -156,6 +156,23 @@ def mass_target_position(target, mid_target, task):
         mid_x, mid_y = 0.25 * np.cos(mid_rad), 0.25 * np.sin(mid_rad) 
         return mid_x, mid_y, x, y
 
+def kobuki_target_position(target, mid_target, task):
+    target_radius = 1.5
+    target_angel = range(0, 225, 45)
+    target_rad = np.deg2rad(target_angel[int(target)])
+    x, y = np.cos(target_rad) * target_radius, np.sin(target_rad) * target_radius - 0.5
+    x = x / 1.9
+    y = y / 1.3
+    if task == 'goal':
+        return x, y
+    else:
+        # TODO to define
+        print('There might be some mistake')
+        mid_angle = [0, 180]
+        mid_rad = np.deg2rad(mid_angle[int(mid_target)-5])
+        mid_x, mid_y = 0.25 * np.cos(mid_rad), 0.25 * np.sin(mid_rad) 
+        return mid_x, mid_y, x, y
+
 def reacher_target_position(target, task):
     if task == 'goal':
         target_pos = np.array([[0, .15], [-.1, .1], [-.2, 0], [-.1, -.1], [0, -.15], [.1, .1], [.1, -.1]]) / .21
@@ -170,8 +187,8 @@ def reacher_target_position(target, task):
 
     return x, y
 
-def mass_test_plot(flag, traj_dict, task):
-    if flag:
+def mass_test_plot(flag, traj_dict, task, env_id):
+    if flag and env_id == 'Mass-point':
         for key in traj_dict:
             fig = plt.figure()
             plt.axis([-1.0, 1.0, -1.0, 1.0])
@@ -191,7 +208,79 @@ def mass_test_plot(flag, traj_dict, task):
             fig.savefig('results02/'+ key +'.png')
             #plt.show()
             plt.close()
+    elif flag and env_id == 'Reacher':
+        for key in traj_dict:
+            fig = plt.figure()
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+            names = key.split('_')
+            if task == 'goal':
+                target_x, target_y = reacher_target_position(names[1], task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+                plt.plot(names[2], names[3], 'go')
+            else:
+                mid_x, mid_y = reacher_target_position(names[1], task)
+                target_x, target_y = reacher_target_position(names[2], task)
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], target_x, target_y, 'ro')
+                plt.plot(mid_x, mid_y, 'bo')
+                plt.plot(names[3], names[4], 'go')
+                plt.plot(names[5], names[6], 'yo')
+            fig.savefig('results02/'+ key +'.png')
+            #plt.show()
+            plt.close()
             
+def eval_plot_kobuki(flag, traj_dict, task):
+    if flag:
+        for key in traj_dict:
+            fig = plt.figure()
+            #plt.axis([-1.9, 1.9, -1.3, 1.3])
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+            x_z = key.split('_')
+
+            if task == 'goal':
+                # plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+            else:
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+                plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+            fig.savefig('figures/'+ key +'.png')
+            plt.close()
+
+def eval_plot_kobuki_all(flag, traj_dict, task):
+    if flag:
+        fig = plt.figure()
+        #plt.axis([-1.9, 1.9, -1.3, 1.3])
+        plt.axis([-1.0, 1.0, -1.0, 1.0])
+        for key in traj_dict:
+            x_z = key.split('_')
+
+            if task == 'goal':
+                plt.plot(float(x_z[0]), float(x_z[1]), 'ro')
+            else:
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+                plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+        fig.savefig('figures/test.png')
+        plt.close()
+
+def eval_plot_all(flag, traj_dict, task):
+    if flag:
+        fig = plt.figure()
+        for key in traj_dict:
+            plt.axis([-1.0, 1.0, -1.0, 1.0])
+        
+            x_z = key.split('_')
+
+            if task == 'goal':
+                # plt.plot(traj_dict[key][:,0], traj_dict[key][:,1], float(x_z[0]), float(x_z[1]), 'ro')
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+            else:
+                plt.plot(traj_dict[key][:,0], traj_dict[key][:,1])
+                plt.plot(float(x_z[0]), float(x_z[1]), 'bo')
+                plt.plot(float(x_z[2]), float(x_z[3]), 'ro')
+        fig.savefig('figures/test.png')
+        plt.close()
+
 def eval_plot(flag, traj_dict, task):
     if flag:
         for key in traj_dict:

@@ -20,24 +20,23 @@ class Dist_CEM():
         if env_id == 'Mass-point':
           if task == 'goal':
               print ('In mass-point goal')
-              '''
               if dist_model != None:
                   model_dir = dist_model
               else:
                   print ('model is none')
                   model_dir = './eval_dist_cem/DistModel/mass_point/64/'
-              '''
               #model_dir = './eval_dist_cem/DistModel/mass_point/64/'
-              model_dir = './eval_dist_cem/DistModel/mass_goal_dist1/'
-              self._distModel = DistModel('RAE_16', 5, 2, n_units=64)
+              # model_dir = './eval_dist_cem/DistModel/mass_goal_dist1/'
+              # self._distModel = DistModel('RAE_16', 5, 2, n_units=64)
+              self._distModel = DistModel('RAE_16', 5, 2, n_units=128)
               self._distModel.load_model(model_dir)
               self._cem = CEM_traj(self._distModel.pred, 2, v_min=[-1, 0], v_max=[1, 1], maxits=100, sampleMethod='Uniform')
           else:
               #model_dir = './eval_traj/DistModel/MPT/128/'
               if dist_model != None:
                   print ('Path of dist func. ', dist_model)
-                  model_dir = "./eval_dist_cem/DistModel/NMPT/noise_0/1/"
-                  # model_dir = dist_model
+                  #model_dir = "./eval_dist_cem/DistModel/NMPT/noise_0/1/"
+                  model_dir = dist_model
               else:
                   print ('model is none')
                   model_dir = './eval_dist_cem/DistModel/MPT/128/'
@@ -45,22 +44,29 @@ class Dist_CEM():
               # model_dir = './eval_dist_cem/DistModel/MPT/128/'
               self._distModel = DistModel('RAE_16', 7, 4, n_units=128)
               self._distModel.load_model(model_dir)
-              self._cem = CEM_traj(self._distModel.pred, 4, v_min=[-0.5, -0.5, -1, -1], v_max=[0.5, 0.5, 1., 1.], maxits=100, sampleMethod='Uniform')
+              self._cem = CEM_traj(self._distModel.pred, 4, v_min=[-0.5, -0.5, -1, -1], v_max=[0.5, 0.5, 1., 1.], maxits=1000, sampleMethod='Uniform')
         else:
           if task == 'goal':
-              '''if dist_model != None:
+              if dist_model != None:
                   model_dir = dist_model
               else:
                   print ('model is none')
                   model_dir = './eval_dist_cem/DistModel/reacher/128/'
-              '''
-              model_dir = './eval_dist_cem/DistModel/reacher_goal_dist3/'
+              
+              # model_dir = './eval_dist_cem/DistModel/reacher_goal_dist3/'
               self._distModel = DistModel('RAE_16', 5, 2, n_units=128)
               self._distModel.load_model(model_dir)
               self._cem = CEM_traj(self._distModel.pred, 2, v_min=[-1., -1.], v_max=[1., 1.], N=1000, maxits=50, sampleMethod='Uniform')
           else:
               print ('Reacher-trajectory')
-              model_dir = './eval_dist_cem/DistModel/reacher_new/128/'
+              if dist_model != None:
+                  print ('Path of dist func. ', dist_model)
+                  #model_dir = "./eval_dist_cem/DistModel/NRT/noise_0/1/"
+                  model_dir = dist_model
+              else:
+                  print ('model is none')
+                  model_dir = './eval_dist_cem/DistModel/reacher_new/128/'
+              # model_dir = './eval_dist_cem/DistModel/reacher_new/128/'
               self._distModel = DistModel('RAE_16', 7, 4, n_units=128)
               self._distModel.load_model(model_dir)
               self._cem = CEM_traj(self._distModel.pred, 4, v_min=[0, -1, -1, -1], v_max=[1, 1, 1, 1], maxits=1000, sampleMethod='Uniform')
@@ -87,16 +93,26 @@ class Dist_CEM():
               self._sgd = SGD(model_dir, self._distModel, 7, 4)
             
     def map_shuffle(self, i):
-        shuffle_idx = [1, 3, 0, 4, 2]
-        return shuffle_idx[i]
+        if self._task == 'goal':
+            shuffle_idx = [1, 3, 0, 4, 2]
+            return shuffle_idx[i]
+        else:
+            shuffle_matrix = np.array([[0, 0, 0, 1, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 0, 1],
+                                    [0, 1, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 1, 0, 0],
+                                    [0, 0, 1, 0, 0, 0, 0],
+                                    [1, 0, 0, 0, 0, 0, 0],
+                                    [0, 0, 0, 0, 0, 1, 0]])
+            return shuffle_matrix.dot(i)
 
     def eval_dist_cem(self, i):
         instr = np.zeros([5])
-        #instr[map_shuffle(i)] = 1
+        # instr[self.map_shuffle(i)] = 1
         instr[i] = 1
         pred_coord = self._cem.eval(instr)
-        print('test: ', i)
-        print('eval: ', instr)
+        # print('test: ', i)
+        # print('eval: ', instr)
         return pred_coord
 
     def eval_dist_sgd(self, i):
@@ -109,7 +125,8 @@ class Dist_CEM():
         instr = np.zeros([7])
         instr[i] = 1
         instr[j] = 1
-        pred_coord = self._cem.eval(instr)
+        # pred_coord = self._cem.eval(instr)
+        pred_coord = self._cem.eval(self.map_shuffle(instr))
         return pred_coord
 
 if __name__ == '__main__':

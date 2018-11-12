@@ -31,6 +31,8 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     # define environment
     if env_id == 'Mass-point':
         env = gym.make('FiveTargetEnv-v1')
+    elif env_id == 'Kobuki':
+        env = gym.make('FiveTargetEnv-v2')
     else:
         env = gym.make('ReacherGEP-v0')
     nb_act = env.action_space.shape[0]
@@ -42,6 +44,9 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
         nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer,\
         nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = reacher_train_config(env_id, nb_pt, cus_noise, nb_act)
     elif env_id=='Mass-point':
+        nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
+        nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = mass_train_config(env_id, nb_pt, cus_noise, nb_act)
+    elif env_id == 'Kobuki':
         nb_bootstrap, nb_explorations, nb_tests, nb_timesteps, offline_eval, controller, representer, \
         nb_rep, engineer_goal, goal_space, initial_space, knn, noise, nb_weights = mass_train_config(env_id, nb_pt, cus_noise, nb_act)
 
@@ -69,7 +74,9 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
         # for random max timepsteps
         if env_id == 'Mass-point':
             nb_timesteps = np.random.randint(10, 51)
-        else:
+        if env_id == 'Kobuki':
+            nb_timesteps = np.random.randint(10, 81)
+        elif env_id == 'Reacher':
             nb_timesteps = np.random.randint(5, 21)
           
         action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
@@ -101,7 +108,9 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
         # for random max timepsteps
         if env_id == 'Mass-point':
             nb_timesteps = np.random.randint(10, 51)
-        else:
+        elif env_id == 'Kobuki':
+            nb_timesteps = np.random.randint(10, 81)
+        elif env_id == 'Reacher':
             nb_timesteps = np.random.randint(5, 21)
         action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
         observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
@@ -130,7 +139,9 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     # for random max timepsteps
     if env_id == 'Mass-point':
         nb_timesteps = 50
-    else:
+    if env_id == 'Kobuki':
+        nb_timesteps = 80
+    elif env_id == 'Reacher':
         nb_timesteps = 20
     action_seqs = np.array([]).reshape(0, nb_act, nb_timesteps)
     observation_seqs = np.array([]).reshape(0, nb_obs, nb_timesteps+1)
@@ -138,7 +149,7 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     # final evaluation phase
     # # # # # # # # # # # # # # #
     for ep in range(nb_tests):
-        engineer_goal = engineer_goal_sample(task, env_id, eval_ins, engineer_goal, ep)
+        engineer_goal = engineer_goal_sample(task, env_id, eval_ins, ep)
         # print('engineer_goal in finalEval: ', engineer_goal)
         # if task == 'goal':
         #     engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
@@ -150,8 +161,13 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
         print('Test episode #', ep+1)
         # print('nb_test:', nb_tests)
         # paulolbear test
-        best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, ep)
-        #best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller)
+        #target = -1
+        '''if env_id == 'Kobuki':
+            target = np.random.randint(0,5)
+            engineer_goal = kobuki_target_position(target, -1, task)
+            engineer_goal = scale_vec(engineer_goal, initial_space)'''
+        #best_policy = offline_evaluations(1, target, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, ep)
+        best_policy = offline_evaluations(1, engineer_goal, knn, nb_rew, nb_timesteps, env, controller)
     # print('Final performance for the run: ', np.array(final_eval_perfs).mean())
 
     # wrap up and save
@@ -163,23 +179,51 @@ def run_experiment(env_id, trial, nb_exploration, saving_folder, eval_ins):
     # return np.array(final_eval_perfs).mean(), knn._Y
     return knn._Y
 
-def engineer_goal_sample(task, env_id, eval_ins, engineer_goal, ep):
+def engineer_goal_sample(task, env_id, eval_ins, ep):
     if env_id == 'Mass-point':
         if task == 'goal':
             if eval_ins == True:
                 # according to GEP_utils
                 engineer_goal = mass_target_position(ep%5, -1, task)
             else:
-                engineer_goal[:2] = np.random.uniform(-1.0, 1.0, (2,))
+                engineer_goal = np.zeros(2)
+                engineer_goal[0] = np.random.sample() * 2. - 1
+                engineer_goal[1] = np.random.sample() * 2. - 1
         elif task == 'traj':
             if eval_ins == True:
                 # according to GEP_utils
                 engineer_goal = mass_target_position(ep%5, ep%2 + 5, task)
             else:
-                engineer_goal[:2] = np.random.uniform(-1., 1., (2,))
-                engineer_goal[2:4] = np.random.uniform(-1.0, 1.0, (2,))
+                engineer_goal = np.zeros(4)
+                engineer_goal[0] = np.random.sample() * 2. - 1
+                engineer_goal[1] = np.random.sample() * 2. - 1
+                engineer_goal[2] = np.random.sample() * 2. - 1
+                engineer_goal[3] = np.random.sample() * 2. - 1
         else:
             print('Error Task Type')
+    elif env_id == 'Kobuki':
+        if task == 'goal':
+            if eval_ins == True:
+                # according to GEP_utils
+                engineer_goal = kobuki_target_position(ep%5, -1, task)
+            else:
+                engineer_goal = np.zeros(2)
+                engineer_goal[0] = np.random.sample() * 2 - 1
+                engineer_goal[1] = np.random.sample() * 2 - 1
+                print(engineer_goal)
+            # print ('Kobuki-Goal')
+        else:
+            # print ('Kobuki-Traj')
+            if eval_ins == True:
+                # according to GEP_utils
+                engineer_goal = kobuki_target_position(ep%5, ep%2 + 5, task)
+            else:
+                engineer_goal = np.zeros(4)
+                engineer_goal[0] = (np.random.sample() * 2 - 1) * 1.9
+                engineer_goal[1] = (np.random.sample() * 2 - 1) * 1.3
+                engineer_goal[2] = (np.random.sample() * 2 - 1) * 1.9
+                engineer_goal[3] = (np.random.sample() * 2 - 1) * 1.3
+    # TODO fill in engineer goal position
     else:
         theta = np.random.sample() * 360
         rad = np.random.sample()
@@ -222,6 +266,11 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
             obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([0], np.zeros(4))), nb_timesteps)
         else:
             obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([1], np.zeros(4))), nb_timesteps)
+    elif env_id == 'Kobuki':
+        if task == 'goal':
+            obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([0], np.zeros(4))), nb_timesteps)
+        else:
+            obs[0, :, 0] = env.unwrapped.reset(np.concatenate(([1], np.zeros(4))), nb_timesteps)
     else:
         if task == 'goal':
             obs[0, :, 0] = env.unwrapped.reset_model(np.concatenate(([0], np.zeros(4))), maxtimestep=nb_timesteps)
@@ -244,7 +293,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
         obs[0, :, t + 1] = out[0]
         rew[0, :, t + 1] = out[1]
         done = out[2]
-        if env_id == 'Mass-point': 
+        if env_id == 'Mass-point' or 'Kobuki': 
             plt_timestep = t+1
         else:
             info = out[3]
@@ -255,7 +304,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
 
     # convert the trajectory into a representation (=behavioral descriptor)
     rep, flag = representer.represent(obs[0,:,0:plt_timestep], act, task, nb_pt)
-    if env_id == 'Mass-point':
+    if env_id == 'Mass-point' or 'Kobuki':
         plt_obs = np.reshape(np.array(obs), (7,nb_timesteps+1))
     else:
         x, y = obs[:,0,:], obs[:,1,:]
@@ -280,7 +329,7 @@ def play_policy(policy, nb_obs, nb_timesteps, nb_act, nb_rew, env, controller, r
 
     return obs, act, rew
 
-def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller, ep):
+def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, controller):
     """
     Play the best policy found in memory to test it. Play it for nb_eps episodes and average the returns.
     """
@@ -289,7 +338,12 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
     task = args.task_type
     nb_pt = args.nb_pt
 
-    best_policy = knn.predict(engineer_goal)[0, :]
+    # x_y = kobuki_target_position(engineer_goal, -1, task)
+    # print('x, y after target position', x_y[0], ' ', x_y[1])
+    if env_id == 'Kobuki':
+        best_policy = knn.predict(engineer_goal)[0, :]
+    else:
+        best_policy = knn.predict(engineer_goal)[0, :]
 
     # returns = []
     for i in range(nb_eps):
@@ -297,15 +351,24 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         rew.fill(np.nan)
 
         env.reset()
+        '''if task == 'goal' and env_id != 'Kobuki':
+            # paulolbear test
+            #configs = np.concatenate(([2], np.zeros(1), [ep%5], np.zeros(1), np.zeros(1)),axis=0)
+            configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
+        elif env_id != 'Kobuki':
+            configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)'''
         if task == 'goal':
             # paulolbear test
             #configs = np.concatenate(([2], np.zeros(1), [ep%5], np.zeros(1), np.zeros(1)),axis=0)
             configs = np.concatenate(([4], np.zeros(2), np.array(engineer_goal)),axis=0)
         else:
             configs = np.concatenate(([5], np.array(engineer_goal)),axis=0)
-        if env_id == 'Mass-point':
+        if env_id == 'Mass-point' or env_id == 'Kobuki':
             obs = env.unwrapped.reset(configs, nb_timesteps) 
             plt_obs = [obs] # plot
+            '''elif env_id == 'Kobuki':
+                obs = env.unwrapped.reset(target, nb_timesteps) 
+                plt_obs = [obs] # plot'''
         else:
             obs = env.unwrapped.reset_model(configs, nb_timesteps, isEval=True) 
             plt_obs = [[obs[0], obs[1]]]
@@ -322,8 +385,9 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
             rew[:, t + 1] = out[1]
             done = out[2]
             info = out[3]
+            # print('target', info['target'], 'instr', engineer_goal)
             
-            if env_id == 'Mass-point':
+            if env_id == 'Mass-point' or 'Kobuki':
                 plt_obs.append(obs) # plot
             else:
                 plt_obs.append([obs[0], obs[1]])
@@ -332,6 +396,11 @@ def offline_evaluations(nb_eps, engineer_goal, knn, nb_rew, nb_timesteps, env, c
         # returns.append(np.nansum(rew))
 
         if task == 'goal':
+            '''if env_id == 'Kobuki':
+                x, y = kobuki_target_position(target, -1, task)
+                key = "_".join([str(x), str(y), str(n_traj)])
+
+            else:'''
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(n_traj)])
         else:
             key = "_".join([str(engineer_goal[0]), str(engineer_goal[1]), str(engineer_goal[2]), str(engineer_goal[3])])
@@ -349,7 +418,8 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
     # draw goal in goal space
     goal = np.copy(sample(goal_space))
     # scale goal to [-1,1]^N
-    goal = scale_vec(goal, initial_space)
+    # goal = scale_vec(goal, initial_space)
+    print('random goal\'s goal', goal)
 
     # find policy of nearest neighbor
     policy = knn.predict(goal)[0]
@@ -363,13 +433,14 @@ def random_goal(nb_rep, knn, goal_space, initial_space, noise, nb_weights):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--trial', type=str, help='Folder name')
-    parser.add_argument('--env_id', type=str, help='Environment ID', choices=['Mass-point', 'Reacher'], default='Mass-point')
+    parser.add_argument('--env_id', type=str, help='Environment ID', choices=['Mass-point', 'Kobuki', 'Reacher'], default='Mass-point')
     parser.add_argument('--task_type', type=str, help='Goal or Traj oriented task', choices=['goal', 'traj',] ,default='goal')
     parser.add_argument('--cus_noise', type=str, help='Value of noise in training', default='0.05')
     parser.add_argument('--nb_exploration', type=int, help='The number of explorations', default=1000)
     parser.add_argument('--nb_tests', type=int, help='Number of evaluation episodes', default=100)
     parser.add_argument('--nb_pt', type=int, help='Number of points', default=2)
     parser.add_argument('--saving_folder', type=str, help='Path of .pk file save', default='./outputs/')
+    parser.add_argument('--traj_folder', type=str, default='./trajectory/')
     parser.add_argument('--save_plot', type=bool, help='To save figure or not', default=False)
     parser.add_argument('--save_pickle', type=bool, help='To save pickle or not', default=False)
     parser.add_argument('--eval_ins', type=bool, default=False)
@@ -382,13 +453,39 @@ if __name__ == '__main__':
     nb_pt          = args.nb_pt
     nb_exploration = args.nb_exploration
     saving_folder  = args.saving_folder
+    traj_folder    = args.traj_folder
     save_plot      = args.save_plot
     eval_ins       = args.eval_ins
 
     policies = run_experiment(env_id, trial_id, nb_exploration, saving_folder, eval_ins)
-   
+    
     for key in train_obs:
         save_traj = train_obs[key][:,:2]
         obj_dict[key] = save_traj[~np.isnan(np.array(save_traj))].reshape(-1,2)
+    if env_id == 'Kobuki':
+        if task == 'goal':
+            with open(traj_folder + "gep_633_goal_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+        else:
+            with open(traj_folder + "gep_633_traj_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+    elif env_id == 'Mass-point':
+        if task == 'goal':
+            with open(traj_folder + "mp_goal_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+        else:
+            with open(traj_folder + "mp_traj_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+    else:
+        if task == 'goal':
+            with open(traj_folder + "reacher_goal_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+        else:
+            with open(traj_folder + "reacher_traj_traj", "wb") as text_file:
+                pickle.dump(obj_dict, text_file)
+    
 
-    eval_plot(save_plot, eval_obs, task)
+    #eval_plot(save_plot, eval_obs, task)
+    #eval_plot_all(save_plot, eval_obs, task)
+    eval_plot_kobuki(save_plot, eval_obs, task)
+    eval_plot_kobuki_all(save_plot, train_obs, task)

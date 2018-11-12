@@ -143,6 +143,7 @@ if __name__ == '__main__':
         task_id = 3
         #model_dir = './eval_traj/DistModel/MPT/128/'
     dist_cem = Dist_CEM(task, env_id, dist_model)
+    shuffle_idx = [1, 3, 0, 4, 2]
 
     for i in range(nb_eps):
         target = i % 5
@@ -157,13 +158,15 @@ if __name__ == '__main__':
             # TODO: make change of cem and sgd
             goal = dist_cem.eval_dist_cem(target)
             if env_id == 'Mass-point':
+                # Change for instruction shuffle
+                # x, y = mass_target_position(target, target_mid, task)
                 x, y = mass_target_position(target, target_mid, task)
                 ideal_pos = [x,y]
             else:
                 ideal_pos = [reacher_target_position(target, task)]
         else:
             if env_id == 'Mass-point':
-                goal = dist_cem.eval_traj(target, target_mid)
+                goal = dist_cem.eval_traj(target+2, target_mid-5)
                 mid_x, mid_y, x, y = mass_target_position(target, target_mid, task)
                 ideal_pos = [mid_x, mid_y, x, y]
             else:
@@ -190,4 +193,4 @@ if __name__ == '__main__':
         writer = csv.writer(f, delimiter=' ')
         writer.writerow([str(total_timesteps), noise, str(n_neighbors), str(np.array(avg_error).mean())])
     
-    mass_test_plot(save_plot, traj_dict, task)
+    mass_test_plot(save_plot, traj_dict, task, env_id)

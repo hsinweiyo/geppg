@@ -135,11 +135,11 @@ if __name__ == '__main__':
         if task == 'goal':
             # print ('Traget: ', np.shape(target))
             goal = dist_cem.eval_dist_cem(target)
-            x, y = target_position(target, target_mid, task)
+            x, y = mass_target_position(target, target_mid, task)
             ideal_pos = [x,y]
         else:
             goal = dist_cem.eval_traj(target, target_mid)
-            mid_x, mid_y, x, y = target_position(target, target_mid, task)
+            mid_x, mid_y, x, y = mass_target_position(target, target_mid, task)
             ideal_pos = [mid_x, mid_y, x, y]
 
         last_pos = run_testing(target, target_mid, goal, knn, obs, nb_timesteps, env, controller)
